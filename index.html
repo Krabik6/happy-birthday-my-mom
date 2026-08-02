@@ -100,8 +100,8 @@ html, body {
 }
 .loot canvas {
   flex: none;
-  width: 40px; height: 40px;
-  padding: 3px;
+  width: 60px; height: 60px;
+  padding: 4px;
   border: 1px solid #6d5327;
   background: rgba(224, 169, 74, .07);
   image-rendering: pixelated;
@@ -147,13 +147,13 @@ html, body {
   transform: translateX(-50%);
   z-index: 7;
   display: flex;
-  gap: 9px;
-  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  gap: 6px;
+  padding: 12px 8px calc(12px + env(safe-area-inset-bottom));
   pointer-events: none;
 }
 .slot {
-  width: 30px; height: 30px;
-  padding: 2px;
+  width: 42px; height: 42px;
+  padding: 3px;
   border: 1px solid #232d3b;
   background: rgba(8, 13, 21, .55);
   opacity: .5;
@@ -250,7 +250,7 @@ html, body {
     <q id="sealText"></q>
     <span class="src" id="sealSrc"></span>
     <div class="loot">
-      <canvas id="lootIcon" width="11" height="11" aria-hidden="true"></canvas>
+      <canvas id="lootIcon" width="16" height="16" aria-hidden="true"></canvas>
       <div class="loot-text">
         <span class="loot-tag" id="lootTag"></span>
         <span class="loot-name" id="lootName"></span>
@@ -613,42 +613,69 @@ function renderLabel(canvas, s, scale, col, tr) {
 }
 
 /* ── Предметы, которые уносишь из каждого мира ───────────────── */
+const ICON = 16;                                 // размер иконки предмета
 const ICONS = {
   scroll: { art: [
-    '...........', '.rr#####rr.', '.rrppppprr.', '.rrp---prr.', '.rrppppprr.',
-    '.rrp---prr.', '.rrppppprr.', '.rrp---prr.', '.rr#####rr.', '...........', '...........'],
-    map: { '#': '#c9bf9e', 'p': '#efe6cc', '-': '#a89a78', 'r': '#8d7f60' } },
+    '................', '................', '..############..', '..rrrrrrrrrrrr..',
+    '..pppppppppppp..', '..p----------p..', '..pppppppppppp..', '..p----------p..',
+    '..pppppppppppp..', '..p----------p..', '..pppppppppppp..', '..rrrrrrrrrrrr..',
+    '..############..', '................', '................', '................'],
+    map: { '#': '#8d7f60', 'r': '#c9bf9e', 'p': '#efe6cc', '-': '#a89a78' } },
+
   vial: { art: [
-    '....###....', '....#g#....', '...#####...', '...#ggg#...', '..#ggggg#..',
-    '..#ggggg#..', '..#ggggg#..', '..#ggggg#..', '..#######..', '...........', '...........'],
-    map: { '#': '#cfe4e8', 'g': '#7fd88a' } },
+    '................', '......####......', '......#cc#......', '......#cc#......',
+    '.....######.....', '.....#gggg#.....', '....########....', '....#gggggg#....',
+    '....#gggggg#....', '....#gggggg#....', '....#gggggg#....', '....#gggggg#....',
+    '....#gggggg#....', '....########....', '................', '................'],
+    map: { '#': '#cfe4e8', 'c': '#8a7a5a', 'g': '#7fd88a' } },
+
   coin: { art: [
-    '...........', '...#####...', '..#ccccc#..', '.#ccc#ccc#.', '.#cc###cc#.',
-    '.#ccc#ccc#.', '.#ccc#ccc#.', '..#ccccc#..', '...#####...', '...........', '...........'],
+    '................', '.....######.....', '...##cccccc##...', '..#cccccccccc#..',
+    '..#cc######cc#..', '.#ccc#cccc#ccc#.', '.#cc#cccccc#cc#.', '.#cc#cccccc#cc#.',
+    '.#cc#cccccc#cc#.', '.#ccc#cccc#ccc#.', '..#cc######cc#..', '..#cccccccccc#..',
+    '...##cccccc##...', '.....######.....', '................', '................'],
     map: { '#': '#8a6c28', 'c': '#d8b95e' } },
+
   feather: { art: [
-    '.......##..', '......###..', '.....####..', '....#####..', '...#####...',
-    '..#####....', '..####.....', '..###......', '..##.......', '..#........', '...........'],
+    '............###.', '...........####.', '..........#####.', '.........#####..',
+    '........#####...', '.......#####....', '......#####.....', '.....#####......',
+    '....#####.......', '...#####........', '..####..........', '..###...........',
+    '..##............', '..#.............', '................', '................'],
     map: { '#': '#3fc9a0' } },
+
   shard: { art: [
-    '.....#.....', '....###....', '...##b##...', '..##bbb##..', '..#bbbbb#..',
-    '..#bbbbb#..', '..#bbbbb#..', '...#bbb#...', '....###....', '...........', '...........'],
+    '.......##.......', '......####......', '.....##bb##.....', '....##bbbb##....',
+    '...##bbbbbb##...', '...#bbbbbbbb#...', '...#bbbbbbbb#...', '...#bbbbbbbb#...',
+    '...#bbbbbbbb#...', '...#bbbbbbbb#...', '....#bbbbbb#....', '....##bbbb##....',
+    '.....##bb##.....', '......####......', '................', '................'],
     map: { '#': '#bff4fb', 'b': '#4fd6e8' } },
+
   spice: { art: [
-    '...........', '....###....', '...#sss#...', '..#sssss#..', '.#sssssss#.',
-    '.#sssssss#.', '.#sssssss#.', '..#sssss#..', '...#####...', '...........', '...........'],
-    map: { '#': '#4c3f7a', 's': '#7d6bd8' } },
+    '................', '......####......', '.....#tttt#.....', '....##tttt##....',
+    '...#ssssssss#...', '..#ssssssssss#..', '..#ssssssssss#..', '..#ssssssssss#..',
+    '..#ssssssssss#..', '..#ssssssssss#..', '...#ssssssss#...', '....########....',
+    '................', '................', '................', '................'],
+    map: { '#': '#4c3f7a', 't': '#6b5a3e', 's': '#7d6bd8' } },
+
   torch: { art: [
-    '....f......', '...fff.....', '..fffef....', '...fff.....', '....#......',
-    '....#......', '....#......', '....#......', '....#......', '...........', '...........'],
-    map: { 'f': '#e8452c', 'e': '#ffe9a8', '#': '#6b4526' } },
+    '.......f........', '......fff.......', '.....fofof......', '.....fooof......',
+    '....ffoooff.....', '.....fooof......', '.....ffoff......', '......fff.......',
+    '.......f........', '......####......', '......#hh#......', '......#hh#......',
+    '......#hh#......', '......#hh#......', '......####......', '................'],
+    map: { 'f': '#e8452c', 'o': '#ffe9a8', '#': '#4a3524', 'h': '#6b4526' } },
+
   tin: { art: [
-    '...........', '..#######..', '.#ttttttt#.', '.#t#eee#t#.', '.#t#eee#t#.',
-    '.#ttttttt#.', '.#ttttttt#.', '..#######..', '...........', '...........', '...........'],
+    '................', '................', '..############..', '..#tttttttttt#..',
+    '..#t########t#..', '..#t#eeeeee#t#..', '..#t#eeeeee#t#..', '..#t#eeeeee#t#..',
+    '..#t########t#..', '..#tttttttttt#..', '..############..', '................',
+    '................', '................', '................', '................'],
     map: { '#': '#5f6a72', 't': '#8b959c', 'e': '#c96a2e' } },
+
   phial: { art: [
-    '....###....', '....#w#....', '....#w#....', '...#####...', '..#wwwww#..',
-    '.#wwwwwww#.', '.#wwwwwww#.', '..#wwwww#..', '...#####...', '...........', '...........'],
+    '.......##.......', '.......##.......', '......####......', '......#ww#......',
+    '.....######.....', '....##wwww##....', '...##wwwwww##...', '...#wwwwwwww#...',
+    '...#wwwwwwww#...', '...#wwwwwwww#...', '...#wwwwwwww#...', '....##wwww##....',
+    '.....######.....', '................', '................', '................'],
     map: { '#': '#a8bccf', 'w': '#dfe9f5' } }
 };
 function drawIcon(ctx, key, x, y, s) {
@@ -1965,7 +1992,7 @@ SCENES.lamp = {
   sockets(h) {
     const y = Math.round(h * .66);
     const out = [];
-    for (let i = 0; i < 7; i++) out.push({ x: 13 + i * 15, y });
+    for (let i = 0; i < 7; i++) out.push({ x: 12 + i * 16, y });
     return out;
   },
 
@@ -2015,7 +2042,7 @@ SCENES.lamp = {
     ctx.fillRect(C.x - 5, C.y - 5, C.w + 10, 3); ctx.fillRect(C.x - 5, C.y + C.h + 2, C.w + 10, 3);
 
     // пульт
-    const cTop = Math.round(h * .58);
+    const cTop = Math.round(h * .56);
     ctx.fillStyle = '#4a3a22'; ctx.fillRect(2, cTop, W - 4, floorY - cTop);
     ctx.fillStyle = '#6b5530'; ctx.fillRect(2, cTop, W - 4, 3);
     ctx.fillStyle = '#382c19'; ctx.fillRect(2, floorY - 5, W - 4, 5);
@@ -2033,9 +2060,9 @@ SCENES.lamp = {
 
     // гнёзда
     this.sockets(h).forEach(s => {
-      ctx.fillStyle = '#2a2318'; ctx.fillRect(s.x - 6, s.y - 6, 13, 13);
-      ctx.fillStyle = '#6b5530'; ctx.fillRect(s.x - 6, s.y - 6, 13, 2);
-      ctx.fillStyle = '#0d1219'; ctx.fillRect(s.x - 4, s.y - 4, 9, 9);
+      ctx.fillStyle = '#2a2318'; ctx.fillRect(s.x - 8, s.y - 9, 16, 18);
+      ctx.fillStyle = '#6b5530'; ctx.fillRect(s.x - 8, s.y - 9, 16, 2);
+      ctx.fillStyle = '#0d1219'; ctx.fillRect(s.x - 7, s.y - 7, 14, 15);
     });
 
     // пол-решётка
@@ -2057,8 +2084,8 @@ SCENES.lamp = {
     this.sockets(h).forEach((so, i) => {
       if (i >= lit) return;
       const col = cols[i] || '#ffffff';
-      glow(ctx, so.x, so.y, 9 + Math.abs(Math.sin(t * 2 + i)) * 2, col, 1);
-      drawIcon(ctx, (s.icons && s.icons[i]) || 'shard', so.x - 5, so.y - 5, 1);
+      glow(ctx, so.x, so.y, 12 + Math.abs(Math.sin(t * 2 + i)) * 2, col, 1);
+      drawIcon(ctx, (s.icons && s.icons[i]) || 'shard', so.x - (ICON >> 1), so.y - (ICON >> 1), 1);
       // ниточка света от гнезда к колонне
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -2333,11 +2360,11 @@ const FX = {
     }
     for (const f of this.flyers) {
       ctx.globalAlpha = .55;
-      disc(ctx, Math.round(f.x), Math.round(f.y), 8, f.col);
+      disc(ctx, Math.round(f.x), Math.round(f.y), 11, f.col);
     }
     ctx.restore();
     for (const f of this.flyers) {
-      drawIcon(ctx, f.icon, Math.round(f.x) - 5, Math.round(f.y) - 5, 1);
+      drawIcon(ctx, f.icon, Math.round(f.x) - (ICON >> 1), Math.round(f.y) - (ICON >> 1), 1);
     }
     if (this.flashA > .01) {
       ctx.save();
@@ -2759,7 +2786,7 @@ function complete() {
     document.getElementById('lootNote').textContent = it.note;
     const lc = document.getElementById('lootIcon').getContext('2d');
     lc.imageSmoothingEnabled = false;
-    lc.clearRect(0, 0, 11, 11);
+    lc.clearRect(0, 0, ICON, ICON);
     drawIcon(lc, it.icon, 0, 0, 1);
     sealEl.classList.add('on');
     sealUp = true;
@@ -3045,7 +3072,7 @@ function buildBag() {
     b.className = 'slot';
     b.type = 'button';
     b.tabIndex = -1;
-    b.appendChild(Object.assign(document.createElement('canvas'), { width: 11, height: 11 }));
+    b.appendChild(Object.assign(document.createElement('canvas'), { width: ICON, height: ICON }));
     b.addEventListener('pointerenter', () => showTip(i));
     b.addEventListener('pointerleave', hideTip);
     b.addEventListener('focus', () => showTip(i));
@@ -3060,7 +3087,7 @@ function fillSlot(i, icon, col) {
   if (!b) return;
   const cc = b.firstChild.getContext('2d');
   cc.imageSmoothingEnabled = false;
-  cc.clearRect(0, 0, 11, 11);
+  cc.clearRect(0, 0, ICON, ICON);
   drawIcon(cc, icon, 0, 0, 1);
   b.classList.add('full');
   b.tabIndex = 0;
@@ -3075,7 +3102,7 @@ function clearSlot(i) {
   b.classList.remove('full');
   b.tabIndex = -1;
   b.style.boxShadow = 'none';
-  b.firstChild.getContext('2d').clearRect(0, 0, 11, 11);
+  b.firstChild.getContext('2d').clearRect(0, 0, ICON, ICON);
 }
 
 /* ── Подсказка: что это за предмет ───────────────────────────── */
@@ -3219,6 +3246,9 @@ function startFinale() {
     SND.whoosh(true);
     FX.fly(sx, sy, so.x, so.y, fin.colors[i], fin.icons[i], () => {
       fin.lit = i + 1;
+      showLine(itemOf(STATIONS[i]).item);            // подписываем, что встало в гнездо
+      clearTimeout(startFinale._n);
+      startFinale._n = setTimeout(hideLine, 1400);
       FX.burst(so.x, so.y, [fin.colors[i], '#ffffff'], 18, { speed: 34, g: 0, life: .8 });
       FX.flash(fin.colors[i], .20);
       SND.tone(KEY[STATIONS[i].id] || 392, .9, { gain: .13, type: 'triangle' });
