@@ -1973,10 +1973,15 @@ SCENES.stairs = {
     }
     fadeEdges(ctx, h, 24, 18, '#04070d');
   },
-  anim(ctx, h, t) {
-    for (let y = 60; y < h - 20; y += 78) {
-      flame(ctx, 17, y - 4, 4, t, '#fff0c4', '#ff9a2e', y);
-      glow(ctx, 17, y - 6, 20, '#ffb648', .5);
+  /** srcTop и srcH — окно, вырезанное из длинного холста при панораме:
+      без них пламя рисуется в экранных координатах и отрывается от свечей. */
+  anim(ctx, h, t, s, srcTop, srcH) {
+    const top = srcTop || 0, H = srcH || h;
+    for (let y = 60; y < H - 20; y += 78) {
+      const sy = y - top;
+      if (sy < -24 || sy > h + 24) continue;
+      flame(ctx, 17, sy - 4, 4, t, '#fff0c4', '#ff9a2e', y);
+      glow(ctx, 17, sy - 6, 20, '#ffb648', .5);
     }
   }
 };
@@ -3177,8 +3182,9 @@ SCENES.finale = {
         cache[key] = c;
       }
       const pan = Math.round(clamp(bt / 4.2, 0, 1) * h);
-      ctx.drawImage(cache[key], 0, h - pan, W, h, 0, 0, W, h);
-      SCENES.stairs.anim(ctx, h, t, s);
+      const srcTop = h - pan;                            // какой кусок длинного холста виден
+      ctx.drawImage(cache[key], 0, srcTop, W, h, 0, 0, W, h);
+      SCENES.stairs.anim(ctx, h, t, s, srcTop, h * 2);
       return;
     }
 
