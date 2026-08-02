@@ -10,7 +10,11 @@
   --sans:  ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
 }
 * , *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; background: #04070d; }
+html, body {
+  margin: 0; padding: 0; background: #04070d;
+  height: 100%; overflow: hidden;                /* плёнка листается, а не прокручивается */
+  overscroll-behavior: none;
+}
 
 .app {
   margin: 0;
@@ -28,9 +32,9 @@ html, body { margin: 0; padding: 0; background: #04070d; }
   top: 0; left: 50%;
   transform: translateX(-50%);
   image-rendering: pixelated;
+  touch-action: none;                            /* жесты принадлежат сцене */
   z-index: 1;
 }
-#spacer { width: 1px; }
 
 /* ── Надписи рассказчика ───────────────────────────────── */
 .say {
@@ -130,71 +134,41 @@ html, body { margin: 0; padding: 0; background: #04070d; }
 .hint.on { opacity: 1; animation: breathe 2.4s ease-in-out infinite; }
 @keyframes breathe { 0%,100% { opacity: .45 } 50% { opacity: 1 } }
 
-/* ── Оверлеи: пролог и финал ───────────────────────────── */
-.veil {
-  position: fixed; inset: 0;
-  z-index: 20;
+/* ── Финальные титры поверх кадра ──────────────────────── */
+.titles {
+  position: fixed;
+  left: 50%; top: max(9vh, 56px);
+  transform: translateX(-50%);
+  z-index: 12;
+  width: min(30ch, calc(100vw - 40px));
   display: grid;
-  place-items: center;
-  background: var(--ground);
+  gap: 20px;
+  justify-items: center;
   text-align: center;
-  padding: 26px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.6s ease;
 }
-.veil[hidden] { display: none; }
-.veil canvas { image-rendering: pixelated; position: absolute; top: 0; left: 50%; transform: translateX(-50%); }
-#prologue { place-items: end center; padding-bottom: max(20vh, 140px); }
-.veil .line {
-  position: relative;
-  z-index: 2;
-  max-width: 26ch;
-  font-size: 19px;
-  line-height: 1.55;
+.titles.on { opacity: 1; }
+.titles canvas { image-rendering: pixelated; max-width: 100%; height: auto; }
+.titles .wish {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.5;
   text-wrap: balance;
   text-shadow: 0 2px 16px #04070d, 0 0 30px #04070d;
-  opacity: 0;
-  transition: opacity 1.1s ease;
 }
-.veil .line.on { opacity: 1; }
-.veil .go {
-  position: absolute;
-  left: 50%; bottom: calc(48px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  z-index: 3;
-  font-family: var(--sans);
-  font-size: 11px;
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  color: #e0a94a;
-  background: none;
-  border: 0;
-  padding: 12px 18px;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity .8s ease;
-}
-.veil .go.on { opacity: 1; animation: breathe 2.4s ease-in-out infinite; }
-
-/* ── Финал ─────────────────────────────────────────────── */
-#finale { place-items: start center; padding-top: max(9vh, 60px); }
-#finale .stack {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  gap: 22px;
-  justify-items: center;
-  opacity: 0;
-  transition: opacity 1.4s ease;
-}
-#finale .stack.on { opacity: 1; }
-#finale canvas.title { position: static; transform: none; }
-#finale .wish { font-size: 20px; line-height: 1.5; text-wrap: balance; }
 
 /* ── Меню ──────────────────────────────────────────────── */
 .menu {
   position: fixed;
-  top: calc(10px + env(safe-area-inset-top));
-  right: max(10px, calc(50vw - 180px));
+  top: calc(8px + env(safe-area-inset-top));
+  right: max(8px, calc(50vw - 184px));
   z-index: 9;
+  display: flex;
+  gap: 2px;
+}
+.menu button {
   font-family: var(--sans);
   font-size: 10px;
   letter-spacing: .14em;
@@ -204,9 +178,9 @@ html, body { margin: 0; padding: 0; background: #04070d; }
   border: 0;
   padding: 8px 10px;
   cursor: pointer;
-  opacity: .55;
+  opacity: .6;
 }
-.menu:hover { color: var(--ink); opacity: 1; }
+.menu button:hover { color: var(--ink); opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
@@ -215,13 +189,14 @@ html, body { margin: 0; padding: 0; background: #04070d; }
 
 <div class="app">
   <canvas id="stage" aria-label="Путешествие по семи мирам за огнём для маяка" role="img"></canvas>
-  <div id="spacer"></div>
-
   <p class="say" id="say"></p>
-  <div class="hint" id="hint">Веди вверх</div>
+  <div class="hint" id="hint"></div>
 
   <div class="bag" id="bag" aria-hidden="true"></div>
-  <button class="menu" id="reset" type="button">Заново</button>
+  <div class="menu">
+    <button id="sound" type="button">Звук</button>
+    <button id="reset" type="button">Заново</button>
+  </div>
 
   <div class="seal" id="seal" role="status">
     <q id="sealText"></q>
@@ -229,18 +204,9 @@ html, body { margin: 0; padding: 0; background: #04070d; }
     <span class="got" id="sealGot"></span>
   </div>
 
-  <div class="veil" id="prologue">
-    <canvas id="prologueArt" aria-hidden="true"></canvas>
-    <p class="line" id="prologueLine"></p>
-    <button class="go" id="prologueGo" type="button">Дальше</button>
-  </div>
-
-  <div class="veil" id="finale" hidden>
-    <canvas id="finaleArt" aria-hidden="true"></canvas>
-    <div class="stack" id="finaleStack">
-      <canvas class="title" id="finaleTitle" aria-hidden="true"></canvas>
-      <p class="wish" id="finaleWish"></p>
-    </div>
+  <div class="titles" id="finaleStack">
+    <canvas id="finaleTitle" aria-hidden="true"></canvas>
+    <p class="wish" id="finaleWish"></p>
   </div>
 </div>
 
@@ -256,7 +222,10 @@ const TEXT = {
     'Он погас.',
     'Свет остался только в историях.'
   ],
-  prologueGo: 'Идти',
+  tapOn: 'Коснись',
+  next: 'Проведи вверх',
+  soundOn: 'Звук',
+  soundOff: 'Тихо',
   taken: 'Огонь взят',
   finaleTitle: 'МАЯК НАДЕЖДЫ',
   finaleWish: 'С днём рождения, мама'
@@ -678,32 +647,6 @@ function drawSea(ctx, y0, y1, col) {
   ctx.globalAlpha = 1;
 }
 
-/* ── ДОРОГА: последний луч маяка, лежащий на воде ─────────────── */
-SCENES.road = {
-  paint(ctx, h) {
-    vgrad(ctx, 0, h, '#04070e', '#060c16', 6);
-    const n = makeNoise(3);
-    ctx.fillStyle = '#0b1626';
-    for (let y = 0; y < h; y += 3)
-      for (let x = (y * 5) % 13; x < W; x += 11 + (y % 3) * 3)
-        if (n(x * .1, y * .1, 2) > .45) ctx.fillRect(x, y, 3, 1);
-    // редкие звёзды, отражённые в воде
-    scatter(ctx, '#1b2c42', 22, 0, 0, W, h, 61);
-  },
-  anim(ctx, h, t, s) {
-    if (!s || !s.fire) return;
-    // впереди уже брезжит свет следующего мира
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 46; i++) {
-      ctx.globalAlpha = .020 * (1 - i / 46);
-      ctx.fillStyle = s.fire;
-      ctx.fillRect(0, h - 1 - i, W, 1);
-    }
-    ctx.restore();
-    glow(ctx, 60, h + 8, 34 + Math.abs(Math.sin(t * .9)) * 4, s.fire, .32);
-  }
-};
 
 /* ── 1. МОСКВА · бальный зал ──────────────────────────────────── */
 SCENES.moscow = {
@@ -1862,36 +1805,394 @@ SCENES.lamp = {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   ДВИЖОК
+   ЗВУК. Ничего не грузим — всё синтезируется на месте.
+   ═══════════════════════════════════════════════════════════════ */
+const SND = {
+  ctx: null, master: null, buf: null, muted: false, amb: [],
+
+  boot() {
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    this.ctx = new AC();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = this.muted ? 0 : .5;
+    this.master.connect(this.ctx.destination);
+    const n = Math.floor(this.ctx.sampleRate * 2);
+    this.buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
+    const d = this.buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  },
+  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+  mute(v) {
+    this.muted = v;
+    if (this.master) this.master.gain.setTargetAtTime(v ? 0 : .5, this.ctx.currentTime, .05);
+  },
+
+  /** Чистый тон с огибающей. */
+  tone(f, dur, o) {
+    if (!this.ctx || this.muted) return;
+    o = o || {};
+    const t0 = this.ctx.currentTime + (o.delay || 0);
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(f, t0);
+    if (o.to) osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.to), t0 + dur);
+    const peak = o.gain == null ? .16 : o.gain;
+    const atk = o.attack == null ? .008 : o.attack;
+    g.gain.setValueAtTime(.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + atk);
+    g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+    osc.connect(g); g.connect(this.master);
+    osc.start(t0); osc.stop(t0 + dur + .05);
+  },
+
+  /** Шум через фильтр — из него делаются удары, ветер, прибой и огонь. */
+  noise(dur, o) {
+    if (!this.ctx || this.muted) return;
+    o = o || {};
+    const t0 = this.ctx.currentTime + (o.delay || 0);
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.buf; src.loop = true;
+    const f = this.ctx.createBiquadFilter();
+    f.type = o.type || 'bandpass';
+    f.frequency.setValueAtTime(o.f0 || 800, t0);
+    if (o.f1) f.frequency.exponentialRampToValueAtTime(Math.max(40, o.f1), t0 + dur);
+    f.Q.value = o.q == null ? 1 : o.q;
+    const g = this.ctx.createGain();
+    const peak = o.gain == null ? .12 : o.gain;
+    g.gain.setValueAtTime(.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + (o.attack == null ? .01 : o.attack));
+    g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+    src.connect(f); f.connect(g); g.connect(this.master);
+    src.start(t0); src.stop(t0 + dur + .05);
+  },
+
+  arp(freqs, step, o) {
+    freqs.forEach((f, i) => this.tone(f, (o && o.dur) || .5,
+      Object.assign({ delay: i * step, gain: .12, type: 'triangle' }, o)));
+  },
+
+  /* готовые звуки */
+  tap()      { this.noise(.07, { f0: 1600, f1: 700, gain: .10, q: .8 }); this.tone(760, .07, { gain: .05, type: 'square' }); },
+  crack()    { this.noise(.13, { f0: 3400, f1: 900, gain: .16, q: .7 }); this.tone(220, .10, { to: 110, gain: .08, type: 'square' }); },
+  whoosh(up) { this.noise(.34, { f0: up ? 380 : 1100, f1: up ? 1300 : 260, gain: .10, q: .9 }); },
+  thud()     { this.tone(72, .30, { to: 42, gain: .22, type: 'sine' }); this.noise(.20, { f0: 200, f1: 70, gain: .10, type: 'lowpass' }); },
+  spark(i)   { this.tone(520 + i * 90, .18, { gain: .09, type: 'triangle' }); },
+  fillTone(p){ this.tone(360 + p * 420, .14, { gain: .05, type: 'sine' }); },
+  clack()    { this.noise(.09, { f0: 2200, f1: 500, gain: .13, q: .6, type: 'bandpass' });
+               this.tone(150, .10, { to: 80, gain: .10, type: 'square' }); },
+  got(base)  { this.arp([base, base * 1.25, base * 1.5, base * 2], .09, { dur: .8, gain: .11 }); },
+
+  /** Фон мира: гул, дыхание ветра и редкие потрескивания. */
+  ambient(cfg) {
+    this.stopAmb();
+    if (!this.ctx || !cfg) return;
+    const t0 = this.ctx.currentTime;
+    if (cfg.drone) {
+      const osc = this.ctx.createOscillator(), g = this.ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = cfg.drone;
+      g.gain.value = 0;
+      g.gain.setTargetAtTime(cfg.dg, t0, 1.2);
+      osc.connect(g); g.connect(this.master); osc.start();
+      this.amb.push({ osc, g });
+    }
+    if (cfg.ng) {
+      const src = this.ctx.createBufferSource(); src.buffer = this.buf; src.loop = true;
+      const f = this.ctx.createBiquadFilter(); f.type = 'bandpass';
+      f.frequency.value = cfg.nf[0]; f.Q.value = .7;
+      const lfo = this.ctx.createOscillator(), lg = this.ctx.createGain();
+      lfo.frequency.value = .06 + Math.random() * .05;
+      lg.gain.value = (cfg.nf[1] - cfg.nf[0]) / 2;
+      f.frequency.value = (cfg.nf[0] + cfg.nf[1]) / 2;
+      lfo.connect(lg); lg.connect(f.frequency);
+      const g = this.ctx.createGain(); g.gain.value = 0;
+      g.gain.setTargetAtTime(cfg.ng, t0, 1.5);
+      src.connect(f); f.connect(g); g.connect(this.master);
+      src.start(); lfo.start();
+      this.amb.push({ osc: src, g, lfo });
+    }
+    if (cfg.crack) {
+      const tick = () => {
+        if (!this.ambCfg || this.ambCfg !== cfg) return;
+        this.noise(.05 + Math.random() * .06, {
+          f0: cfg.cf || 2200, f1: (cfg.cf || 2200) * .4,
+          gain: .03 + Math.random() * .04, q: 1.2
+        });
+        this._ct = setTimeout(tick, (400 + Math.random() * 1400) / cfg.crack);
+      };
+      this._ct = setTimeout(tick, 300);
+    }
+    this.ambCfg = cfg;
+  },
+  stopAmb() {
+    clearTimeout(this._ct);
+    this.ambCfg = null;
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    for (const a of this.amb) {
+      a.g.gain.setTargetAtTime(0, t, .35);
+      try { a.osc.stop(t + 1.6); if (a.lfo) a.lfo.stop(t + 1.6); } catch (e) {}
+    }
+    this.amb = [];
+  }
+};
+
+/** Фон каждого мира: гул, полоса ветра, частота потрескиваний. */
+const AMB = {
+  prologue: { drone: 55,  dg: .05, nf: [140, 460],  ng: .034, crack: .25, cf: 900 },
+  moscow:   { drone: 98,  dg: .05, nf: [160, 400],  ng: .016, crack: .7,  cf: 1800 },
+  niichavo: { drone: 100, dg: .035, nf: [260, 820], ng: .012, crack: 1.1, cf: 2600 },
+  desert:   { drone: 62,  dg: .028, nf: [500, 1900],ng: .028, crack: .35, cf: 3200 },
+  arrakis:  { drone: 44,  dg: .06, nf: [180, 820],  ng: .040, crack: 0 },
+  westeros: { drone: 70,  dg: .04, nf: [700, 2700], ng: .046, crack: .4,  cf: 3000 },
+  camp:     { drone: 82,  dg: .04, nf: [180, 640],  ng: .022, crack: 3.4, cf: 2400 },
+  lorien:   { drone: 147, dg: .05, nf: [900, 2300], ng: .009, crack: .3,  cf: 3600 },
+  finale:   { drone: 110, dg: .05, nf: [200, 900],  ng: .026, crack: .2,  cf: 1600 }
+};
+/** Нота, на которой звучит огонь каждого мира. */
+const KEY = { moscow: 392, niichavo: 440, desert: 494, arrakis: 330, westeros: 294, camp: 262, lorien: 523 };
+
+/* ═══════════════════════════════════════════════════════════════
+   ЭФФЕКТЫ: тряска, вспышка, частицы
+   ═══════════════════════════════════════════════════════════════ */
+const FX = {
+  shake: 0, flashA: 0, flashCol: '#ffffff', parts: [], flyers: [],
+
+  hit(power) { this.shake = Math.min(6, this.shake + power); },
+  flash(col, a) { this.flashCol = col; this.flashA = Math.max(this.flashA, a); },
+
+  burst(x, y, col, n, o) {
+    o = o || {};
+    for (let i = 0; i < n; i++) {
+      const a = o.dir == null ? Math.random() * Math.PI * 2
+        : o.dir + (Math.random() - .5) * (o.spread == null ? 1.2 : o.spread);
+      const sp = (o.speed || 34) * (.35 + Math.random() * .9);
+      this.parts.push({
+        x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        g: o.g == null ? 34 : o.g, life: (o.life || .8) * (.6 + Math.random() * .8),
+        age: 0, col: Array.isArray(col) ? col[(Math.random() * col.length) | 0] : col,
+        size: o.size || 1
+      });
+    }
+  },
+  /** Огонь летит из сцены в свою ячейку внизу экрана. */
+  fly(x, y, tx, ty, col, done) {
+    this.flyers.push({ x, y, x0: x, y0: y, tx, ty, col, p: 0, done });
+  },
+
+  update(dt) {
+    this.shake = Math.max(0, this.shake - dt * 22);
+    this.flashA = Math.max(0, this.flashA - dt * 2.4);
+    for (let i = this.parts.length - 1; i >= 0; i--) {
+      const p = this.parts[i];
+      p.age += dt;
+      if (p.age >= p.life) { this.parts.splice(i, 1); continue; }
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt;
+      p.vx *= .985;
+    }
+    for (let i = this.flyers.length - 1; i >= 0; i--) {
+      const f = this.flyers[i];
+      f.p += dt * 1.5;
+      if (f.p >= 1) { f.done && f.done(); this.flyers.splice(i, 1); continue; }
+      const q = smooth(f.p);
+      f.x = lerp(f.x0, f.tx, q);
+      f.y = lerp(f.y0, f.ty, q) - Math.sin(f.p * Math.PI) * 26;
+      if (Math.random() > .5) this.parts.push({
+        x: f.x, y: f.y, vx: 0, vy: 0, g: 6, life: .35, age: 0, col: f.col, size: 1
+      });
+    }
+  },
+
+  draw(ctx) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const p of this.parts) {
+      ctx.globalAlpha = (1 - p.age / p.life) * .95;
+      ctx.fillStyle = p.col;
+      ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+    }
+    for (const f of this.flyers) {
+      ctx.globalAlpha = 1;
+      gem(ctx, Math.round(f.x), Math.round(f.y), 2, f.col);
+      ctx.globalAlpha = .5;
+      disc(ctx, Math.round(f.x), Math.round(f.y), 5, f.col);
+    }
+    ctx.restore();
+    if (this.flashA > .01) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, this.flashA);
+      ctx.fillStyle = this.flashCol;
+      ctx.fillRect(0, 0, W, AH);
+      ctx.restore();
+    }
+  },
+  clear() { this.parts.length = 0; this.flyers.length = 0; this.shake = 0; this.flashA = 0; }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   ПОКАЗ ЖЕСТА: рука проделывает действие, потом его повторяют
+   ═══════════════════════════════════════════════════════════════ */
+const HAND = [
+  '...##..', '..####.', '..####.', '..####.', '..####.',
+  '.#####.', '#######', '#######', '#######', '.#####.', '..###..'
+];
+function drawHand(ctx, x, y, a) {
+  ctx.globalAlpha = a * .5;                        // тень, чтобы рука читалась и на светлом
+  for (const [dx, dy] of [[-1,0],[1,0],[0,-1],[0,1],[1,1],[-1,1]])
+    drawSpr(ctx, HAND, x - 7 + dx * 2, y + dy * 2, { '#': '#05080e' }, 2);
+  ctx.globalAlpha = a;
+  drawSpr(ctx, HAND, x - 7, y, { '#': '#f2ead6' }, 2);
+  ctx.globalAlpha = a * .35;                       // блик по краю
+  drawSpr(ctx, HAND, x - 9, y - 2, { '#': '#ffffff' }, 2);
+  ctx.globalAlpha = 1;
+}
+function dashTo(ctx, x0, y0, x1, y1, phase, col) {
+  const n = Math.round(Math.hypot(x1 - x0, y1 - y0) / 3);
+  ctx.fillStyle = col;
+  for (let i = 0; i <= n; i++) {
+    if ((i + phase) % 3) continue;
+    ctx.globalAlpha = .5;
+    ctx.fillRect(Math.round(lerp(x0, x1, i / n)), Math.round(lerp(y0, y1, i / n)), 2, 2);
+  }
+  ctx.globalAlpha = 1;
+}
+function targetRing(ctx, x, y, t, col) {
+  for (let k = 0; k < 2; k++) {
+    const q = ((t * 1.6 + k * .5) % 1);
+    ctx.globalAlpha = .75 * (1 - q);
+    ring(ctx, x, y, Math.round(5 + q * 16), col);
+    ctx.globalAlpha = .35 * (1 - q);
+    ring(ctx, x, y, Math.round(6 + q * 16), '#ffffff');
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** Рисует подсказку для текущего действия. */
+function drawDemo(ctx, h, s, t) {
+  const c = s.fire, ph = (t * .8) % 1;
+  switch (s.act) {
+    case 'hold': {
+      const A = SCENES.moscow.act(h);
+      targetRing(ctx, A.x, A.y - 30, t, c);
+      drawHand(ctx, A.x + 12, A.y - 26 + Math.round(Math.sin(t * 2) * 1.5), .9);
+      break;
+    }
+    case 'choice': {
+      const sp = SCENES.niichavo.spots(h);
+      const k = Math.floor(t * .9) % 3, p = sp[k];
+      targetRing(ctx, p.x, p.y + 8, t, c);
+      drawHand(ctx, p.x + 8, p.y + 12 + Math.round(Math.sin(t * 6) * 2), .9);
+      break;
+    }
+    case 'taps': {
+      const cr = SCENES.desert.crystal(h);
+      const bounce = Math.abs(Math.sin(t * 5)) * 7;
+      targetRing(ctx, cr.x, cr.y - 10, t, c);
+      drawHand(ctx, cr.x + 10, cr.y - 22 + Math.round(bounce), .9);
+      break;
+    }
+    case 'pull': {
+      const A = SCENES.arrakis.thumper(h);
+      const y0 = A.y - 34, y1 = A.y - 6;
+      dashTo(ctx, A.x + 12, y0, A.x + 12, y1, Math.floor(t * 9), c);
+      ctx.fillStyle = c;                                  // стрелка вниз
+      for (let i = 0; i < 4; i++) ctx.fillRect(A.x + 10 + i, y1 - 3 + i, 6 - i * 2, 2);
+      drawHand(ctx, A.x + 12, Math.round(lerp(y0, y1 - 8, ph)), .9);
+      break;
+    }
+    case 'draw': {
+      const pts = SCENES.westeros.runePts(h);
+      for (let i = 1; i < pts.length; i++)
+        dashTo(ctx, pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y, Math.floor(t * 9), c);
+      const q = ph * (pts.length - 1), i0 = Math.min(pts.length - 2, Math.floor(q)), f = q - i0;
+      drawHand(ctx, Math.round(lerp(pts[i0].x, pts[i0 + 1].x, f)),
+                    Math.round(lerp(pts[i0].y, pts[i0 + 1].y, f)) + 2, .9);
+      break;
+    }
+    case 'fan': {
+      const F = SCENES.camp.fire(h);
+      const y0 = F.y + 4, y1 = F.y - 24;
+      dashTo(ctx, F.x + 16, y1, F.x + 16, y0, Math.floor(t * 9), c);
+      ctx.fillStyle = c;                                  // стрелка вверх
+      for (let i = 0; i < 4; i++) ctx.fillRect(F.x + 14 + i, y1 + 3 - i, 6 - i * 2, 2);
+      drawHand(ctx, F.x + 16, Math.round(lerp(y0, y1, ph)), .9);
+      break;
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ПРОЛОГ КАК ПЕРВЫЙ КАДР ПЛЁНКИ
+   ═══════════════════════════════════════════════════════════════ */
+SCENES.prologue = {
+  live: true,
+  draw(ctx, h, t, s) {
+    const bt = t - (s.t0 || 0), beat = s.beat || 0;
+    const hz = Math.round(h * .50);
+    vgrad(ctx, 0, hz, '#04070f', '#0b1b2e', 7);
+    scatter(ctx, '#cfd8e4', 62, 0, 0, W, hz - 8, 5);
+    vgrad(ctx, hz, h, '#0a1826', '#050a12', 6);
+
+    const rockY = Math.round(h * .62);
+    drawRock(ctx, 60, rockY, 35);
+    const lampY = drawTower(ctx, 60, rockY, 50);
+
+    let on = 1, beam = .22;
+    if (beat === 0) beam = .20 + Math.sin(bt * 1.2) * .04;
+    if (beat === 1) { const k = clamp(bt / 2.6, 0, 1); on = 1 - k; beam = .20 * (1 - k); }
+    if (beat >= 2) { on = 0; beam = 0; }
+
+    drawBeams(ctx, 60, lampY, beam, bt * .5, 110, '#ffe0a0');
+    drawLamp(ctx, 60, lampY, on, '#ffe6a8');
+
+    const sea0 = rockY + 16;
+    drawSea(ctx, sea0, h, '#1d3f5e');
+    if (on > .1) reflect(ctx, 60, sea0, h, '#ffd27a', on * .5);
+
+    if (beat === 1) {                                   // темнота идёт от горизонта
+      const k = clamp((bt - .8) / 2.4, 0, 1);
+      ctx.globalAlpha = .92; ctx.fillStyle = '#04070d';
+      ctx.fillRect(0, hz, W, Math.round((h - hz) * k));
+      ctx.fillRect(0, hz - Math.round(hz * k * .9), W, Math.round(hz * k * .9));
+      ctx.globalAlpha = 1;
+    }
+    if (beat >= 2) {
+      ctx.globalAlpha = .86; ctx.fillStyle = '#04070d'; ctx.fillRect(0, 0, W, h);
+      ctx.globalAlpha = 1;
+    }
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   ДВИЖОК: плёнка из кадров, свайп перематывает
    ═══════════════════════════════════════════════════════════════ */
 const stage = document.getElementById('stage');
 const sctx = stage.getContext('2d');
-const spacer = document.getElementById('spacer');
 const sayEl = document.getElementById('say');
 const hintEl = document.getElementById('hint');
 const bagEl = document.getElementById('bag');
 const sealEl = document.getElementById('seal');
+const soundBtn = document.getElementById('sound');
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const GAP = 16;                                    // межкадровая полоса плёнки
 
-let scale = 3, AH = 240, blocks = [], worldH = 0, cam = 0, maxCam = 0;
-let active = null, walkPhase = 0, lastCam = 0;
-const st = {};                                   // состояние каждой станции
+const FRAMES = [{ id: 'prologue' }]
+  .concat(STATIONS.map(s => ({ id: s.scene, station: s })))
+  .concat([{ id: 'finale' }]);
+
+let scale = 3, AH = 240;
+let idx = 0, phase = 'play', cut = 0, cutting = false, dragging = false;
+let idle = 0, demoOn = false, lastT = performance.now() / 1000;
+const st = {};
 STATIONS.forEach(s => st[s.id] = {});
-const lampState = { lit: 0, colors: [] };
-let done = [];                                   // id пройденных станций
-let finished = false;
-
-const pathX = y => 60 + Math.sin(y * .017) * 9 + Math.sin(y * .0061) * 5;
-
-/** Куда встать героине. Внутри мира — слева от предмета действия. */
-const STAND_X = 32;
-function walkerX(wy) {
-  const b = blockAt(wy);
-  if (!b || b.kind !== 'world' || b.id === 'stairs' || b.id === 'lamp') return pathX(wy);
-  const into = Math.min(wy - b.top, b.top + b.h - wy);
-  return lerp(pathX(wy), STAND_X, sstep(6, 44, into));
-}
+const pro = { beat: 0, t0: 0 };
+const fin = { beat: -1, t0: 0, lit: 0, colors: [], pan: 0 };
+let done = [];
+const cache = {};
 
 function layout() {
   const vw = Math.min(innerWidth, 720), vh = innerHeight;
@@ -1901,269 +2202,362 @@ function layout() {
   stage.style.width = (W * scale) + 'px';
   stage.style.height = (AH * scale) + 'px';
   sctx.imageSmoothingEnabled = false;
-
-  const worldBlock = Math.max(215, AH);
-  const road = Math.max(120, Math.round(AH * .55));
-  blocks = [];
-  let y = 0;
-  const push = (kind, id, hh, station) => { blocks.push({ kind, id, top: y, h: hh, station }); y += hh; };
-
-  push('road', 'road', Math.round(road * 1.2));
-  STATIONS.forEach(s => {
-    push('world', s.scene, worldBlock, s);
-    push('road', 'road', road);
-  });
-  push('world', 'stairs', Math.round(AH * 1.7));
-  push('world', 'lamp', AH);
-  worldH = y;
-
-  for (let i = 0; i < blocks.length; i++) {
-    const b = blocks[i];
-    b.cache = null;
-    if (b.kind === 'world') { b.focus = b.top + Math.round((b.h - AH) / 2); continue; }
-    const nxt = blocks[i + 1];                       // цвет мира, к которому ведёт дорога
-    b.st = nxt && nxt.station ? { fire: nxt.station.fire } : {};
-  }
-  recomputeGate();
-  applyBodyHeight();
+  for (const k in cache) delete cache[k];
 }
 
-function stationBlocks() { return blocks.filter(b => b.station); }
-function lampBlock() { return blocks.find(b => b.id === 'lamp'); }
-
-function recomputeGate() {
-  const next = stationBlocks().find(b => !done.includes(b.station.id));
-  maxCam = next ? next.focus : lampBlock().focus;
+function sceneOf(i) {
+  const f = FRAMES[i];
+  return f ? (SCENES[f.id] || null) : null;
 }
-function applyBodyHeight() {
-  spacer.style.height = ((maxCam + AH) * scale) + 'px';
+function stateOf(i) {
+  const f = FRAMES[i];
+  if (!f) return {};
+  if (f.station) return st[f.station.id];
+  if (f.id === 'prologue') return pro;
+  if (f.id === 'finale') return fin;
+  return {};
 }
-
-function blockCache(b) {
-  if (b.cache) return b.cache;
+function cached(i) {
+  const f = FRAMES[i], sc = sceneOf(i);
+  if (!sc || sc.live) return null;
+  const key = f.id + '@' + AH;
+  if (cache[key]) return cache[key];
   const c = document.createElement('canvas');
-  c.width = W; c.height = b.h;
+  c.width = W; c.height = AH;
   const cc = c.getContext('2d');
   cc.imageSmoothingEnabled = false;
-  (SCENES[b.id] || SCENES.road).paint(cc, b.h);
-  b.cache = c;
+  sc.paint(cc, AH);
+  cache[key] = c;
   return c;
 }
 
-/* ── Отрисовка кадра ─────────────────────────────────────────── */
-let t0 = performance.now();
+function drawFrame(i, y, t) {
+  const sc = sceneOf(i);
+  if (!sc) { sctx.fillStyle = '#04070d'; sctx.fillRect(0, y, W, AH); return; }
+  sctx.save();
+  sctx.beginPath(); sctx.rect(0, y, W, AH); sctx.clip();
+  sctx.translate(0, y);
+  const state = stateOf(i);
+  if (sc.live) sc.draw(sctx, AH, t, state);
+  else {
+    sctx.drawImage(cached(i), 0, 0);
+    if (sc.anim) sc.anim(sctx, AH, reduced ? 0 : t, state);
+  }
+  sctx.restore();
+}
+
+/** Межкадровая полоса с перфорацией — то, что делает переход плёночным. */
+function drawGap(y) {
+  sctx.fillStyle = '#04070d';
+  sctx.fillRect(0, y, W, GAP);
+  sctx.fillStyle = '#0d141d';
+  sctx.fillRect(0, y + 1, W, 1); sctx.fillRect(0, y + GAP - 2, W, 1);
+  sctx.fillStyle = '#1b2634';
+  for (let x = 3; x < W; x += 15) {
+    sctx.fillRect(x, y + 5, 7, 6);
+    sctx.fillStyle = '#0a1119';
+    sctx.fillRect(x + 1, y + 6, 5, 4);
+    sctx.fillStyle = '#1b2634';
+  }
+}
+
 function frame(now) {
-  const t = (now - t0) / 1000;
-  cam = window.scrollY / scale;
+  const t = now / 1000;
+  const dt = Math.min(.05, t - lastT);
+  lastT = t;
+  FX.update(dt);
+  if (phase === 'play' && FRAMES[idx].station && !dragging) idle += dt;
 
   sctx.fillStyle = '#04070d';
   sctx.fillRect(0, 0, W, AH);
 
-  for (const b of blocks) {
-    if (b.top + b.h < cam || b.top > cam + AH) continue;
-    const off = Math.round(b.top - cam);
-    sctx.save();
-    sctx.translate(0, off);
-    sctx.beginPath(); sctx.rect(0, 0, W, b.h); sctx.clip();
-    sctx.drawImage(blockCache(b), 0, 0);
-    const sc = SCENES[b.id];
-    if (sc && sc.anim) {
-      const state = b.station ? st[b.station.id]
-        : b.id === 'lamp' ? lampState : (b.st || {});
-      sc.anim(sctx, b.h, reduced ? 0 : t, state);
-    }
-    sctx.restore();
+  const span = AH + GAP;
+  const off = Math.round(-cut * span);
+  const sh = FX.shake > .05 && !reduced
+    ? { x: Math.round((Math.random() - .5) * FX.shake), y: Math.round((Math.random() - .5) * FX.shake) }
+    : { x: 0, y: 0 };
+
+  sctx.save();
+  sctx.translate(sh.x, sh.y);
+  drawFrame(idx, off, t);
+  if (cut > 0.001 && idx + 1 < FRAMES.length) {
+    drawGap(off + AH);
+    drawFrame(idx + 1, off + span, t);
   }
 
-  drawBeam(t);
-  drawWalker(t);
+  // подсказка жеста поверх сцены
+  const f = FRAMES[idx];
+  if (phase === 'play' && f.station && cut < .02) {
+    const s = f.station, state = st[s.id];
+    const show = !state.done && s.act !== 'still' && idle > 1.4;
+    if (show) {
+      sctx.save(); sctx.translate(0, off);
+      drawDemo(sctx, AH, s, t);
+      sctx.restore();
+    }
+    if (show !== demoOn) { demoOn = show; show ? showHint(s.hint) : hideHint(); }
+  }
+  FX.draw(sctx);
+  sctx.restore();
+
+  // лёгкое мерцание плёнки в момент склейки
+  if (cut > .02) {
+    sctx.save();
+    sctx.globalCompositeOperation = 'lighter';
+    sctx.globalAlpha = .05 + Math.random() * .05;
+    sctx.fillStyle = '#20304a';
+    sctx.fillRect(0, 0, W, AH);
+    sctx.restore();
+  }
   requestAnimationFrame(frame);
 }
 
-/** Луч-тропа: лежит на воде между мирами, гаснет внутри сцен. */
-function drawBeam(t) {
-  for (let sy = 0; sy < AH; sy++) {
-    const wy = cam + sy;
-    const b = blockAt(wy);
-    if (!b) continue;
-    const inWorld = b.kind === 'world';
-    const edge = inWorld
-      ? sstep(0, 30, Math.min(wy - b.top, b.top + b.h - wy))
-      : 0;
-    const strength = .30 * (1 - edge);
-    if (strength < .02) continue;
-    const x = pathX(wy);
-    sctx.globalAlpha = strength;
-    sctx.fillStyle = '#8fb8e0';
-    sctx.fillRect(Math.round(x) - 5, sy, 11, 1);
-    sctx.globalAlpha = strength * 1.9;
-    sctx.fillStyle = '#dbeaf8';
-    sctx.fillRect(Math.round(x) - 1, sy, 3, 1);
-  }
-  sctx.globalAlpha = 1;
+/* ── Смена кадра ─────────────────────────────────────────────── */
+function goNext() {
+  if (cutting || idx + 1 >= FRAMES.length) return;
+  cutting = true;
+  hideHint();
+  SND.clack();
+  const from = cut, t0 = performance.now();
+  const step = now => {
+    const k = clamp((now - t0) / 320, 0, 1);
+    cut = lerp(from, 1, smooth(k));
+    if (k < 1) return requestAnimationFrame(step);
+    idx++; cut = 0; cutting = false;
+    FX.clear();
+    enterFrame();
+  };
+  requestAnimationFrame(step);
+}
+function snapBack() {
+  const from = cut, t0 = performance.now();
+  const step = now => {
+    const k = clamp((now - t0) / 220, 0, 1);
+    cut = lerp(from, 0, smooth(k));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
-function drawWalker(t) {
-  if (finished) return;
-  const sy = Math.round(AH * FEET);                  // ноги стоят ровно на земле сцен
-  const wy = cam + sy;
-  const b = blockAt(wy);
-  if (b && (b.id === 'lamp')) return;
-  const moving = Math.abs(cam - lastCam) > .12;
-  if (moving) walkPhase += .35;
-  lastCam = cam;
-  const art = (Math.floor(walkPhase) % 2) ? SPR.walkB : SPR.walkA;
-  const bob = (Math.floor(walkPhase) % 2) ? 1 : 0;
-  const x = Math.round(walkerX(wy)) - 3;
-  drawSpr(sctx, art, x, sy - sprH(art) + bob, { '#': '#e8dcc0' }, 1);
-  sctx.globalAlpha = .35;
-  sctx.fillStyle = '#04070d';
-  sctx.fillRect(x - 1, sy + bob, 7, 1);
-  sctx.globalAlpha = 1;
-}
-
-function blockAt(y) {
-  for (const b of blocks) if (y >= b.top && y < b.top + b.h) return b;
-  return null;
-}
-
-/* ── Станции: приход, действие, печать ───────────────────────── */
-function tick() {
-  if (finished) return;
-  const nextStation = stationBlocks().find(b => !done.includes(b.station.id));
-  if (nextStation && !active && cam >= nextStation.focus - 3) enter(nextStation);
-  if (!nextStation && !finished && cam >= lampBlock().focus - 3) startFinale();
-}
-
-function enter(b) {
-  active = b;
-  const s = b.station;
-  sayEl.textContent = s.say;
-  sayEl.classList.add('on');
-  hintEl.textContent = s.hint;
-  hintEl.classList.remove('on');
-  stage.style.touchAction = 'none';
+function enterFrame() {
+  const f = FRAMES[idx];
+  idle = 0; demoOn = false;
+  if (f.id === 'prologue') { pro.beat = 0; pro.t0 = performance.now() / 1000; phase = 'play'; showLine(TEXT.prologue[0]); showHint(TEXT.tapOn); SND.ambient(AMB.prologue); return; }
+  if (f.id === 'finale') { phase = 'done'; hideLine(); hideHint(); startFinale(); return; }
+  const s = f.station;
+  SND.ambient(AMB[s.id]);
+  if (st[s.id].done) { phase = 'sealed'; hideLine(); showHint(TEXT.next); return; }
+  phase = 'play';
+  showLine(s.say);
+  hideHint();
   if (s.act === 'still') beginStill();
-  clearTimeout(enter._h);
-  if (s.hint) enter._h = setTimeout(() => hintEl.classList.add('on'), 2600);
 }
 
+/* ── Надписи ─────────────────────────────────────────────────── */
+function showLine(txt) { sayEl.textContent = txt; sayEl.classList.add('on'); }
+function hideLine() { sayEl.classList.remove('on'); }
+function showHint(txt) { hintEl.textContent = txt; hintEl.classList.add('on'); }
+function hideHint() { hintEl.classList.remove('on'); }
+
+/* ── Завершение станции ──────────────────────────────────────── */
 function complete() {
-  const s = active.station;
-  const state = st[s.id];
+  const s = FRAMES[idx].station, state = st[s.id];
+  if (state.done) return;
   state.done = true;
   const fire = (s.options && state.pick != null) ? s.options[state.pick].fire : s.fire;
   state.fire = fire;
-  done.push(s.id);
-  save();
-  fillSlot(done.length - 1, fire);
+  phase = 'sealed';
+  demoOn = false;
 
-  hintEl.classList.remove('on');
-  sayEl.classList.remove('on');
-  clearTimeout(enter._h);
+  const A = actionPoint(s, AH);
+  FX.burst(A.x, A.y, [fire, '#ffffff', mix(fire, '#ffffff', .5)], 42, { speed: 58, g: 26, life: 1.1 });
+  FX.flash(fire, .5);
+  FX.hit(reduced ? 0 : 5);
+  SND.got(KEY[s.id] || 392);
+  SND.thud();
+
+  hideLine(); hideHint();
+
+  // огонь летит в свою ячейку
+  const slot = bagEl.children[STATIONS.indexOf(s)];
+  const r = slot ? slot.getBoundingClientRect() : null;
+  const cr = stage.getBoundingClientRect();
+  const tx = r ? (r.left + r.width / 2 - cr.left) / scale : W / 2;
+  const ty = r ? (r.top + r.height / 2 - cr.top) / scale : AH - 8;
+  FX.fly(A.x, A.y, tx, ty, fire, () => {
+    fillSlot(STATIONS.indexOf(s), fire);
+    SND.spark(4);
+    if (!done.includes(s.id)) done.push(s.id);
+    save();
+  });
 
   setTimeout(() => {
     document.getElementById('sealText').textContent = s.quote;
     document.getElementById('sealSrc').textContent = s.src;
     document.getElementById('sealGot').textContent = TEXT.taken;
     sealEl.classList.add('on');
-  }, 620);
-
-  setTimeout(() => {
-    sealEl.classList.remove('on');
-    active = null;
-    stage.style.touchAction = '';
-    recomputeGate();
-    applyBodyHeight();
-    hintEl.textContent = 'Веди вверх';
-    hintEl.classList.add('on');
-    setTimeout(() => hintEl.classList.remove('on'), 4200);
-  }, 4200);
+  }, 760);
+  setTimeout(() => { sealEl.classList.remove('on'); showHint(TEXT.next); }, 4600);
 }
 
-/* ── Жесты ───────────────────────────────────────────────────── */
+function actionPoint(s, h) {
+  switch (s.act) {
+    case 'hold':   { const a = SCENES.moscow.act(h); return { x: a.x, y: a.y - 30 }; }
+    case 'choice': { const p = SCENES.niichavo.spots(h)[st.niichavo.pick || 0]; return { x: p.x, y: p.y + 8 }; }
+    case 'taps':   { const c = SCENES.desert.crystal(h); return { x: c.x, y: c.y - 10 }; }
+    case 'pull':   { const a = SCENES.arrakis.thumper(h); return { x: a.x, y: a.y - 6 }; }
+    case 'draw':   { const a = SCENES.westeros.brazier(h); return { x: a.x, y: a.y - 12 }; }
+    case 'fan':    { const a = SCENES.camp.fire(h); return { x: a.x, y: a.y - 10 }; }
+    default:       { const v = SCENES.lorien.vial(h); return { x: v.x, y: v.y - 8 }; }
+  }
+}
+
+/* ── Ввод ────────────────────────────────────────────────────── */
 let ptr = null;
-
-function artPoint(e) {
+const artPt = e => {
   const r = stage.getBoundingClientRect();
-  return {
-    x: (e.clientX - r.left) / scale,
-    y: (e.clientY - r.top) / scale + cam
-  };
-}
-function sceneY(p) { return p.y - active.top; }
+  return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
+};
 
 stage.addEventListener('pointerdown', e => {
-  if (!active) return;
   e.preventDefault();
+  SND.boot(); SND.resume();
+  if (!SND.ambCfg) SND.ambient(AMB[FRAMES[idx].id] || AMB.prologue);
   stage.setPointerCapture(e.pointerId);
-  const s = active.station, state = st[s.id], p = artPoint(e), sy = sceneY(p);
-  ptr = { x0: p.x, y0: sy, x: p.x, y: sy, t: performance.now() };
+  const p = artPt(e);
+  ptr = { x0: p.x, y0: p.y, x: p.x, y: p.y, moved: 0 };
+  idle = 0;
 
-  if (s.act === 'hold') { state.holding = true; }
-  if (s.act === 'still') { rippleNow(); }
+  const f = FRAMES[idx];
+  if (phase === 'sealed') { dragging = true; return; }   // кадр готов — тянем плёнку
+  if (f.id === 'prologue') return;
+  if (!f.station) return;
+
+  const s = f.station, state = st[s.id];
+  if (state.done) return;
+
+  if (s.act === 'hold') { state.holding = true; SND.noise(.2, { f0: 300, f1: 900, gain: .05 }); }
+  if (s.act === 'still') rippleNow();
   if (s.act === 'choice') {
-    // щедрые зоны: промахнуться пальцем нельзя
-    SCENES.niichavo.spots(active.h).forEach((sp, i) => {
+    SCENES.niichavo.spots(AH).forEach((sp, i) => {
       if (state.pick != null) return;
-      if (Math.abs(p.x - sp.x) < 12 && sy > sp.y - 10 && sy < sp.y + 26) {
-        state.pick = i; complete();
+      if (Math.abs(p.x - sp.x) < 12 && p.y > sp.y - 10 && p.y < sp.y + 26) {
+        state.pick = i;
+        FX.burst(sp.x, sp.y + 8, s.options[i].fire, 16, { speed: 30, life: .6 });
+        SND.tap(); SND.spark(i);
+        complete();
       }
     });
   }
   if (s.act === 'taps') {
-    const c = SCENES.desert.crystal(active.h);
-    if (Math.abs(p.x - c.x) < 20 && sy > c.y - 32 && sy < c.y + 16) {
+    const c = SCENES.desert.crystal(AH);
+    if (Math.abs(p.x - c.x) < 20 && p.y > c.y - 32 && p.y < c.y + 16) {
       state.taps = clamp((state.taps || 0) + 1, 0, 6);
+      FX.burst(c.x, c.y - 10, ['#4fd6e8', '#bff4fb'], 10, { speed: 40, g: 90, life: .55, dir: -1.6, spread: 2.4 });
+      FX.hit(reduced ? 0 : 2.5);
+      SND.crack();
       if (state.taps >= 6) complete();
-    }
+    } else { SND.tap(); }
   }
   if (s.act === 'draw') {
     state.marks = state.marks || [false, false, false, false, false];
-    markRune(p.x, sy, state);
+    markRune(p.x, p.y, state);
   }
 }, { passive: false });
 
 stage.addEventListener('pointermove', e => {
-  if (!active || !ptr) return;
+  if (!ptr) return;
   e.preventDefault();
-  const s = active.station, state = st[s.id], p = artPoint(e), sy = sceneY(p);
-  ptr.x = p.x; ptr.y = sy;
+  const p = artPt(e);
+  ptr.moved += Math.abs(p.y - ptr.y) + Math.abs(p.x - ptr.x);
+  ptr.x = p.x; ptr.y = p.y;
+
+  if (dragging) {
+    cut = clamp((ptr.y0 - p.y) / (AH * .40), 0, 1);
+    if (cut > .04) { hideLine(); hideHint(); }     // на склейке экран чист
+    return;
+  }
+  const f = FRAMES[idx];
+  if (!f.station) return;
+  const s = f.station, state = st[s.id];
+  if (state.done) return;
 
   if (s.act === 'pull') {
-    const d = clamp((sy - ptr.y0) / 34, 0, 1);
-    state.pull = Math.max(state.pull || 0, d);
-    if (state.pull >= 1 && !state.done) setTimeout(() => { if (!state.done) complete(); }, 900);
+    const d = clamp((p.y - ptr.y0) / 34, 0, 1);
+    if (d > (state.pull || 0)) {
+      const A = SCENES.arrakis.thumper(AH);
+      if (Math.random() > .6) FX.burst(A.x, A.y, ['#e8c08a', '#c09a68'], 2, { speed: 18, life: .5 });
+      state.pull = d;
+    }
+    if (state.pull >= 1 && !state.armed) {
+      state.armed = true;
+      SND.thud(); FX.hit(reduced ? 0 : 4);
+      setTimeout(() => { if (!state.done) complete(); }, 950);
+    }
   }
-  if (s.act === 'draw') markRune(p.x, sy, state);
+  if (s.act === 'draw') markRune(p.x, p.y, state);
   if (s.act === 'fan') {
-    if (ptr.y0 - sy > 15) {                          // короткого взмаха достаточно
+    if (ptr.y0 - p.y > 15) {
       state.fan = clamp((state.fan || 0) + 1, 0, 3);
-      ptr.y0 = sy;
+      ptr.y0 = p.y;
+      const F = SCENES.camp.fire(AH);
+      FX.burst(F.x, F.y - 6, ['#ffd88a', '#e8a24e', '#c93a1e'], 18,
+        { speed: 46, g: -18, life: .9, dir: -1.57, spread: 1.5 });
+      SND.whoosh(true);
+      SND.noise(.5, { f0: 240, f1: 90, gain: .08, type: 'lowpass' });
       if (state.fan >= 3) complete();
     }
   }
 }, { passive: false });
 
 function endPtr() {
-  if (!active) { ptr = null; return; }
-  const s = active.station, state = st[s.id];
-  if (s.act === 'hold') state.holding = false;
+  const f = FRAMES[idx];
+  if (dragging) {
+    dragging = false;
+    if (cut > .28) goNext(); else snapBack();
+    ptr = null; return;
+  }
+  if (f.id === 'prologue' && ptr && ptr.moved < 12) advancePrologue();
+  if (f.station) {
+    const state = st[f.station.id];
+    if (f.station.act === 'hold') state.holding = false;
+  }
   ptr = null;
 }
 stage.addEventListener('pointerup', endPtr);
 stage.addEventListener('pointercancel', endPtr);
 
+function advancePrologue() {
+  if (pro.beat < 2) {
+    pro.beat++; pro.t0 = performance.now() / 1000;
+    showLine(TEXT.prologue[pro.beat]);
+    SND.noise(.4, { f0: 900, f1: 200, gain: .07 });
+    if (pro.beat === 2) { phase = 'sealed'; showHint(TEXT.next); }
+    else showHint(TEXT.tapOn);
+  }
+}
+
 function markRune(x, y, state) {
-  SCENES.westeros.runePts(active.h).forEach((pt, i) => {
-    if (Math.abs(x - pt.x) < 9 && Math.abs(y - pt.y) < 10) state.marks[i] = true;
+  const pts = SCENES.westeros.runePts(AH);
+  pts.forEach((pt, i) => {
+    if (state.marks[i]) return;
+    if (Math.abs(x - pt.x) < 9 && Math.abs(y - pt.y) < 10) {
+      state.marks[i] = true;
+      FX.burst(pt.x, pt.y, ['#ffcf7a', '#ff7a2e'], 12, { speed: 30, life: .6 });
+      SND.spark(i);
+      SND.noise(.12, { f0: 1200, f1: 400, gain: .06 });
+    }
   });
-  if (state.marks.every(Boolean) && !state.done) complete();
+  if (state.marks.every(Boolean) && !state.done) {
+    const A = SCENES.westeros.brazier(AH);
+    FX.burst(A.x, A.y - 8, ['#ffe9a8', '#e8452c'], 30, { speed: 50, g: -20, life: 1, dir: -1.57, spread: 1.4 });
+    complete();
+  }
 }
 function rippleNow() {
   const state = st.lorien;
-  state.ripple = 1;
-  state.still = 0;
+  state.ripple = 1; state.still = 0;
+  SND.noise(.3, { f0: 700, f1: 240, gain: .06 });
   clearTimeout(rippleNow._t);
   rippleNow._t = setTimeout(() => { state.ripple = 0; }, 900);
 }
@@ -2172,19 +2566,34 @@ function beginStill() {
   state.still = 0;
   clearInterval(beginStill._i);
   beginStill._i = setInterval(() => {
-    if (!active || active.station.id !== 'lorien' || state.done) { clearInterval(beginStill._i); return; }
+    const f = FRAMES[idx];
+    if (!f.station || f.station.id !== 'lorien' || state.done) { clearInterval(beginStill._i); return; }
     if (state.ripple > 0) return;
+    const before = state.still;
     state.still = clamp(state.still + .022, 0, 1);
+    if (Math.floor(before * 8) !== Math.floor(state.still * 8)) {
+      SND.fillTone(state.still);
+      const P = SCENES.lorien.pool(AH), V = SCENES.lorien.vial(AH);
+      FX.parts.push({ x: P.x, y: P.y, vx: (V.x - P.x) * .55, vy: (V.y - 8 - P.y) * .55,
+        g: 0, life: 1.8, age: 0, col: '#dfe9f5', size: 1 });
+    }
     if (state.still >= 1) { clearInterval(beginStill._i); complete(); }
   }, 100);
 }
 
 /* удержание свечи */
 setInterval(() => {
-  if (!active || active.station.act !== 'hold') return;
+  const f = FRAMES[idx];
+  if (!f.station || f.station.act !== 'hold') return;
   const state = st.moscow;
   if (state.done) return;
-  state.progress = clamp((state.progress || 0) + (state.holding ? .035 : -.05), 0, 1);
+  const before = state.progress || 0;
+  state.progress = clamp(before + (state.holding ? .035 : -.05), 0, 1);
+  if (state.holding && Math.random() > .55) {
+    const A = SCENES.moscow.act(AH);
+    FX.burst(A.x, A.y - 34, ['#ffb648', '#ffd98a'], 2, { speed: 14, g: -14, life: .8 });
+  }
+  if (state.holding && Math.floor(before * 6) !== Math.floor(state.progress * 6)) SND.fillTone(state.progress);
   if (state.progress >= 1) complete();
 }, 60);
 
@@ -2206,222 +2615,150 @@ function fillSlot(i, col) {
 }
 
 /* ── Сохранение ──────────────────────────────────────────────── */
-const KEY = 'lighthouse.journey.v1';
+const KEYS = 'lighthouse.film.v1';
 function save() {
   try {
-    localStorage.setItem(KEY, JSON.stringify({
+    localStorage.setItem(KEYS, JSON.stringify({
       done, pick: st.niichavo.pick == null ? null : st.niichavo.pick
     }));
   } catch (e) {}
 }
 function load() {
   try {
-    const r = JSON.parse(localStorage.getItem(KEY) || 'null');
+    const r = JSON.parse(localStorage.getItem(KEYS) || 'null');
     if (!r || !Array.isArray(r.done)) return;
     done = r.done.filter(id => STATIONS.some(s => s.id === id));
     if (r.pick != null) st.niichavo.pick = r.pick;
     done.forEach(id => {
-      const s = STATIONS.find(x => x.id === id);
-      st[id].done = true;
-      st[id].progress = 1; st[id].taps = 6; st[id].pull = 1; st[id].fan = 3; st[id].still = 1;
-      st[id].marks = [true, true, true, true, true];
-      st[id].fire = (s.options && st[id].pick != null) ? s.options[st[id].pick].fire : s.fire;
+      const s = STATIONS.find(x => x.id === id), d = st[id];
+      d.done = true; d.progress = 1; d.taps = 6; d.pull = 1; d.armed = true;
+      d.fan = 3; d.still = 1; d.marks = [true, true, true, true, true];
+      d.fire = (s.options && d.pick != null) ? s.options[d.pick].fire : s.fire;
     });
   } catch (e) {}
 }
 
 document.getElementById('reset').addEventListener('click', () => {
-  try { localStorage.removeItem(KEY); } catch (e) {}
+  try { localStorage.removeItem(KEYS); } catch (e) {}
   location.reload();
 });
-
-/* ═══════════════════════════════════════════════════════════════
-   ПРОЛОГ
-   ═══════════════════════════════════════════════════════════════ */
-const proEl = document.getElementById('prologue');
-const proArt = document.getElementById('prologueArt');
-const proLine = document.getElementById('prologueLine');
-const proGo = document.getElementById('prologueGo');
-const pctx = proArt.getContext('2d');
-let proBeat = 0, proT0 = performance.now(), proRunning = true;
-
-function proLayout() {
-  proArt.width = W; proArt.height = AH;
-  proArt.style.width = (W * scale) + 'px';
-  proArt.style.height = (AH * scale) + 'px';
-  pctx.imageSmoothingEnabled = false;
-}
-
-function proFrame(now) {
-  if (!proRunning) return;
-  const t = (now - proT0) / 1000;
-  const h = AH, hz = Math.round(h * .52);
-
-  vgrad(pctx, 0, hz, '#04070f', '#0b1b2e', 7);
-  scatter(pctx, '#cfd8e4', 60, 0, 0, W, hz - 8, 5);
-  vgrad(pctx, hz, h, '#0a1826', '#050a12', 6);
-
-  const rockY = Math.round(h * .62);
-  drawRock(pctx, 60, rockY, 35);
-  const lampY = drawTower(pctx, 60, rockY, 50);
-
-  let lampOn = 1, beamAlpha = .22;
-  if (proBeat === 0) { beamAlpha = .20 + Math.sin(t * 1.2) * .04; }
-  if (proBeat === 1) { const k = clamp(t / 2.6, 0, 1); lampOn = 1 - k; beamAlpha = .20 * (1 - k); }
-  if (proBeat >= 2) { lampOn = 0; beamAlpha = 0; }
-
-  drawBeams(pctx, 60, lampY, beamAlpha, t * .5, 110, '#ffe0a0');
-  drawLamp(pctx, 60, lampY, lampOn, '#ffe6a8');
-
-  const sea0 = rockY + 16;
-  drawSea(pctx, sea0, h, '#1d3f5e');
-  if (lampOn > .1) reflect(pctx, 60, sea0, h, '#ffd27a', lampOn * .5);
-
-  // темнота идёт от горизонта вниз
-  if (proBeat === 1) {
-    const k = clamp((t - .8) / 2.4, 0, 1);
-    pctx.globalAlpha = .92;
-    pctx.fillStyle = '#04070d';
-    pctx.fillRect(0, hz, W, Math.round((h - hz) * k));
-    pctx.fillRect(0, hz - Math.round(hz * k * .9), W, Math.round(hz * k * .9));
-    pctx.globalAlpha = 1;
-  }
-  if (proBeat >= 2) {
-    // гасим сцену, но не в ноль: маяк должен угадываться
-    pctx.globalAlpha = .84; pctx.fillStyle = '#04070d'; pctx.fillRect(0, 0, W, h); pctx.globalAlpha = 1;
-
-    // последний луч лежит на воде: широкий у ног, сходится к маяку
-    const k = clamp((t - .4) / 2.0, 0, 1);
-    const apexY = rockY - 4;
-    for (let y = h - 1; y > apexY; y--) {
-      const q = (h - y) / (h - apexY);
-      if (q > k) break;
-      const taper = 1 - q * .88;
-      const wd = Math.max(1, Math.round(13 * taper));
-      const x = Math.round(60 + Math.sin(y * .010) * 2.5 * taper);
-      pctx.globalAlpha = .26 * taper + .06;
-      pctx.fillStyle = '#7fa8d4'; pctx.fillRect(x - (wd >> 1), y, wd, 1);
-      pctx.globalAlpha = .50 * taper + .12;
-      pctx.fillStyle = '#dbeaf8';
-      pctx.fillRect(x - Math.max(0, (wd >> 2)), y, Math.max(1, wd >> 1), 1);
-    }
-    pctx.globalAlpha = 1;
-  }
-  requestAnimationFrame(proFrame);
-}
-
-function proShow(i) {
-  proBeat = i;
-  proT0 = performance.now();
-  proLine.classList.remove('on');
-  proGo.classList.remove('on');
-  setTimeout(() => {
-    proLine.textContent = TEXT.prologue[i];
-    proLine.classList.add('on');
-  }, 500);
-  const wait = i === 0 ? 2600 : i === 1 ? 3600 : 2600;
-  setTimeout(() => {
-    proGo.textContent = i === 2 ? TEXT.prologueGo : 'Дальше';
-    proGo.classList.add('on');
-  }, wait);
-}
-proGo.addEventListener('click', () => {
-  if (proBeat < 2) proShow(proBeat + 1);
-  else {
-    proRunning = false;
-    proEl.hidden = true;
-    hintEl.textContent = 'Веди вверх';
-    hintEl.classList.add('on');
-    setTimeout(() => hintEl.classList.remove('on'), 5000);
-  }
+soundBtn.addEventListener('click', () => {
+  SND.boot(); SND.resume();
+  SND.mute(!SND.muted);
+  soundBtn.textContent = SND.muted ? TEXT.soundOff : TEXT.soundOn;
+  if (!SND.muted && !SND.ambCfg) SND.ambient(AMB[FRAMES[idx].id] || AMB.prologue);
 });
 
 /* ═══════════════════════════════════════════════════════════════
-   ФИНАЛ
+   ФИНАЛ: подъём, семь огней, луч, общий план
    ═══════════════════════════════════════════════════════════════ */
-const finEl = document.getElementById('finale');
-const finArt = document.getElementById('finaleArt');
-const fctx = finArt.getContext('2d');
-let finT0 = 0, finBeat = 0, finRunning = false;
+SCENES.finale = {
+  live: true,
+  draw(ctx, h, t, s) {
+    if (s.beat < 0) { ctx.fillStyle = '#04070d'; ctx.fillRect(0, 0, W, h); return; }
+    const bt = t - s.t0;
+
+    if (s.beat === 0) {                                  // подъём по лестнице
+      const key = 'stairsPan@' + h;
+      if (!cache[key]) {
+        const c = document.createElement('canvas');
+        c.width = W; c.height = h * 2;
+        const cc = c.getContext('2d');
+        cc.imageSmoothingEnabled = false;
+        SCENES.stairs.paint(cc, h * 2);
+        cache[key] = c;
+      }
+      const pan = Math.round(clamp(bt / 4.2, 0, 1) * h);
+      ctx.drawImage(cache[key], 0, h - pan, W, h, 0, 0, W, h);
+      SCENES.stairs.anim(ctx, h, t, s);
+      return;
+    }
+
+    if (s.beat === 1) {                                  // фонарная комната
+      const key = 'lampRoom@' + h;
+      if (!cache[key]) {
+        const c = document.createElement('canvas');
+        c.width = W; c.height = h;
+        const cc = c.getContext('2d');
+        cc.imageSmoothingEnabled = false;
+        SCENES.lamp.paint(cc, h);
+        cache[key] = c;
+      }
+      ctx.drawImage(cache[key], 0, 0);
+      SCENES.lamp.anim(ctx, h, t, s);
+      if (s.merge > 0) {
+        const cy = Math.round(h * .44), k = smooth(clamp(s.merge, 0, 1));
+        SCENES.lamp.sockets(h).forEach((so, i) => {
+          gem(ctx, Math.round(lerp(so.x, 60, k)), Math.round(lerp(so.y, cy, k)), 2, s.colors[i]);
+        });
+        glow(ctx, 60, cy, 14 + k * 40, '#ffffff', k * 1.6);
+      }
+      return;
+    }
+
+    // общий план: маяк снова горит
+    const k = clamp(bt / 2.2, 0, 1);
+    const hz = Math.round(h * .66);
+    vgrad(ctx, 0, hz, '#04070f', '#0e2338', 7);
+    scatter(ctx, '#cfd8e4', 74, 0, 0, W, hz - 14, 5);
+    vgrad(ctx, hz, h, '#0b1c2e', '#050b14', 6);
+    const spread = [4, 20, 33, 49, 71, 88, 108];
+    s.colors.forEach((c, i) => {
+      const x = spread[i], y = hz - 3 - ((i * 7) % 5);
+      glow(ctx, x, y, 3 + Math.abs(Math.sin(t * 1.4 + i * 1.7)) * 1.5, c, k * .55);
+      ctx.globalAlpha = k * .9; ctx.fillStyle = c; ctx.fillRect(x, y, 1, 1); ctx.globalAlpha = 1;
+    });
+    const rockY = Math.round(h * .80);
+    drawRock(ctx, 60, rockY, 30, 311);
+    const lampY = drawTower(ctx, 60, rockY, 40);
+    drawBeams(ctx, 60, lampY, .28 * k, t * .45, 130, '#ffffff');
+    drawLamp(ctx, 60, lampY, k, '#fff6d8');
+    drawSea(ctx, rockY + 14, h, '#1d3f5e');
+    reflect(ctx, 60, rockY + 16, h, '#ffffff', k * .55);
+  }
+};
 
 function startFinale() {
-  if (finished) return;
-  finished = true;
-  sayEl.classList.remove('on');
-  hintEl.classList.remove('on');
-  lampState.colors = STATIONS.map(s => st[s.id].fire || s.fire);
-  lampState.lit = 0;
+  fin.colors = STATIONS.map(s => st[s.id].fire || s.fire);
+  fin.lit = 0; fin.merge = 0; fin.beat = 0; fin.t0 = performance.now() / 1000;
+  SND.ambient(AMB.finale);
+  SND.tone(110, 3, { gain: .10, type: 'sine' });
 
-  finArt.width = W; finArt.height = AH;
-  finArt.style.width = (W * scale) + 'px';
-  finArt.style.height = (AH * scale) + 'px';
-  fctx.imageSmoothingEnabled = false;
-
-  finEl.hidden = false;
-  finBeat = 0; finT0 = performance.now(); finRunning = true;
-  requestAnimationFrame(finFrame);
-
-  // артефакты встают по одному
-  for (let i = 0; i < 7; i++) setTimeout(() => { lampState.lit = i + 1; }, 900 + i * 780);
-  setTimeout(() => { finBeat = 1; finT0 = performance.now(); }, 900 + 7 * 780 + 500);   // схождение
-  setTimeout(() => { finBeat = 2; finT0 = performance.now(); }, 900 + 7 * 780 + 2100);  // отъезд
-  setTimeout(() => {
+  const at = (ms, fn) => setTimeout(fn, ms);
+  at(4400, () => {                                       // склейка в ламповую
+    fin.beat = 1; fin.t0 = performance.now() / 1000;
+    SND.clack();
+  });
+  for (let i = 0; i < 7; i++) at(5400 + i * 760, () => {
+    fin.lit = i + 1;
+    const so = SCENES.lamp.sockets(AH)[i];
+    FX.burst(so.x, so.y, [fin.colors[i], '#ffffff'], 18, { speed: 34, g: 0, life: .8 });
+    FX.flash(fin.colors[i], .22);
+    SND.tone(KEY[STATIONS[i].id] || 392, .9, { gain: .13, type: 'triangle' });
+    SND.noise(.2, { f0: 1800, f1: 600, gain: .05 });
+  });
+  at(11200, () => {                                      // цвета сходятся
+    const t0 = performance.now();
+    const step = now => {
+      fin.merge = clamp((now - t0) / 1500, 0, 1);
+      if (fin.merge < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+    SND.arp([262, 330, 392, 523], .12, { dur: 2.4, gain: .10 });
+  });
+  at(13000, () => {
+    FX.flash('#ffffff', 1.6);
+    FX.hit(reduced ? 0 : 6);
+    SND.noise(1.6, { f0: 200, f1: 2600, gain: .16, q: .6 });
+    SND.tone(65, 2.4, { gain: .20 });
+  });
+  at(13500, () => { fin.beat = 2; fin.t0 = performance.now() / 1000; SND.clack(); });
+  at(15200, () => {
     renderLabel(document.getElementById('finaleTitle'), TEXT.finaleTitle, Math.max(2, scale - 1), '#e0a94a');
     document.getElementById('finaleWish').textContent = TEXT.finaleWish;
     document.getElementById('finaleStack').classList.add('on');
-  }, 900 + 7 * 780 + 5200);
-}
-
-function finFrame(now) {
-  if (!finRunning) return;
-  const t = (now - finT0) / 1000;
-  const h = AH;
-  fctx.fillStyle = '#04070d'; fctx.fillRect(0, 0, W, h);
-
-  if (finBeat < 2) {
-    const b = lampBlock();
-    fctx.drawImage(blockCache(b), 0, 0, W, b.h, 0, 0, W, h);
-    SCENES.lamp.anim(fctx, h, t, lampState);
-    if (finBeat === 1) {
-      const k = clamp(t / 1.4, 0, 1);
-      const cy = Math.round(h * .48);
-      SCENES.lamp.sockets(h).forEach((s, i) => {
-        const x = Math.round(lerp(s.x, 60, k)), y = Math.round(lerp(s.y, cy, k));
-        disc(fctx, x, y, 3, lampState.colors[i]);
-      });
-      fctx.globalAlpha = k;
-      disc(fctx, 60, cy, 10 + k * 16, '#ffffff');
-      fctx.globalAlpha = 1;
-    }
-  } else {
-    // общий план: маяк снова горит. Композиция ниже — сверху ляжет текст
-    const k = clamp(t / 2.2, 0, 1);
-    const hz = Math.round(h * .66);
-    vgrad(fctx, 0, hz, '#04070f', '#0e2338', 7);
-    scatter(fctx, '#cfd8e4', 74, 0, 0, W, hz - 14, 5);
-    vgrad(fctx, hz, h, '#0b1c2e', '#050b14', 6);
-
-    // семь огней вдоль горизонта — пройденный путь
-    // семь огней вдоль горизонта: чем дальше, тем тусклее и ниже
-    const spread = [4, 20, 33, 49, 71, 88, 108];
-    lampState.colors.forEach((c, i) => {
-      const x = spread[i], y = hz - 3 - ((i * 7) % 5);
-      glow(fctx, x, y, 3 + Math.abs(Math.sin(t * 1.4 + i * 1.7)) * 1.5, c, k * .55);
-      fctx.globalAlpha = k * .9;
-      fctx.fillStyle = c; fctx.fillRect(x, y, 1, 1);
-      fctx.globalAlpha = 1;
-    });
-
-    const rockY = Math.round(h * .80);
-    drawRock(fctx, 60, rockY, 30, 311);
-    const lampY = drawTower(fctx, 60, rockY, 40);
-    drawBeams(fctx, 60, lampY, .28 * k, t * .45, 130, '#ffffff');
-    drawLamp(fctx, 60, lampY, k, '#fff6d8');
-
-    drawSea(fctx, rockY + 14, h, '#1d3f5e');
-    reflect(fctx, 60, rockY + 16, h, '#ffffff', k * .55);
-  }
-  requestAnimationFrame(finFrame);
+    SND.arp([392, 494, 587, 784], .18, { dur: 3.2, gain: .11 });
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2431,31 +2768,23 @@ function boot() {
   load();
   buildBag();
   layout();
-  proLayout();
-  done.forEach((id, i) => {
+  done.forEach(id => {
     const s = STATIONS.find(x => x.id === id);
-    fillSlot(i, st[id].fire || s.fire);
+    fillSlot(STATIONS.indexOf(s), st[id].fire || s.fire);
   });
   if (done.length) {
-    proRunning = false;
-    proEl.hidden = true;
-    window.scrollTo(0, Math.max(0, (maxCam - AH * .4) * scale));
-  } else {
-    proShow(0);
-    requestAnimationFrame(proFrame);
+    const nextIdx = FRAMES.findIndex(f => f.station && !done.includes(f.station.id));
+    idx = nextIdx === -1 ? FRAMES.length - 1 : nextIdx;
   }
+  soundBtn.textContent = TEXT.soundOn;
+  enterFrame();
   requestAnimationFrame(frame);
-  setInterval(tick, 90);
 }
 
-let resizeT;
+let rt;
 addEventListener('resize', () => {
-  clearTimeout(resizeT);
-  resizeT = setTimeout(() => {
-    const ratio = window.scrollY / Math.max(1, spacer.offsetHeight);
-    layout(); proLayout();
-    window.scrollTo(0, ratio * spacer.offsetHeight);
-  }, 160);
+  clearTimeout(rt);
+  rt = setTimeout(() => { layout(); }, 160);
 });
 
 boot();
