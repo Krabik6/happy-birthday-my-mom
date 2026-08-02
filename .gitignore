@@ -1,0 +1,5 @@
+# Локальная обвязка для скриншотов в браузере (Playwright).
+# Сам подарок — один самодостаточный index.html, сборка ему не нужна.
+node_modules/
+package.json
+package-lock.json
