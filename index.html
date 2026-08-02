@@ -1253,38 +1253,54 @@ SCENES.westeros = {
 
     vgrad(ctx, 0, groundY, '#050810', '#101d31', 7);
 
-    // Стена: ледяные блоки, уходит за верхний край
-    vgradIn(ctx, 0, 0, W, wallBottom, '#152740', '#3a628a');
+    // Стена: толща льда, уходит за верхний край
+    vgradIn(ctx, 0, 0, W, wallBottom, '#0f2038', '#4a76a0');
     const rnd = mulberry32(77);
-    for (let y = -6; y < wallBottom; y += 9) {
-      const off = ((y / 9) | 0) % 2 ? 9 : 0;
-      for (let x = -9 + off; x < W; x += 18) {
-        ctx.fillStyle = 'rgba(190,225,250,' + (.05 + rnd() * .09).toFixed(2) + ')';
-        ctx.fillRect(x + 1, y + 1, 16, 7);
-        ctx.fillStyle = 'rgba(10,22,38,.5)';
-        ctx.fillRect(x, y, 18, 1); ctx.fillRect(x, y, 1, 9);
+    for (let y = -10; y < wallBottom; y += 15) {
+      const off = ((y / 15) | 0) % 2 ? 13 : 0;
+      for (let x = -13 + off; x < W; x += 26) {
+        const q = clamp((y + 10) / (wallBottom + 10), 0, 1);
+        ctx.fillStyle = mix('#172b46', '#5b8ab4', clamp(q * .8 + rnd() * .2, 0, 1));
+        ctx.fillRect(x + 1, y + 1, 24, 13);
+        ctx.fillStyle = 'rgba(6,14,26,.55)';
+        ctx.fillRect(x, y, 26, 1); ctx.fillRect(x, y, 1, 15);
+        ctx.fillStyle = 'rgba(210,238,255,.13)';       // блик по верху блока
+        ctx.fillRect(x + 1, y + 1, 24, 1);
       }
     }
-    ctx.fillStyle = 'rgba(190,225,250,.20)';
-    for (let i = 0; i < 22; i++) {                       // трещины
+    ctx.fillStyle = 'rgba(215,240,255,.16)';           // потёки и трещины
+    for (let i = 0; i < 34; i++) {
       const x = Math.floor(rnd() * W), y = Math.floor(rnd() * wallBottom);
-      ctx.fillRect(x, y, 1, 3 + Math.floor(rnd() * 6));
+      ctx.fillRect(x, y, 1, 4 + Math.floor(rnd() * 14));
     }
-    ctx.fillStyle = '#a8d4ee'; ctx.fillRect(0, wallBottom - 2, W, 2);
-    ctx.globalAlpha = .18; ctx.fillStyle = '#a8d4ee'; ctx.fillRect(0, wallBottom, W, 7); ctx.globalAlpha = 1;
-    // сосульки
-    ctx.fillStyle = '#bcdcf0';
-    for (let x = 2; x < W; x += 7) ctx.fillRect(x, wallBottom, 1, 2 + Math.floor(rnd() * 5));
+    ctx.fillStyle = '#bde0f6'; ctx.fillRect(0, wallBottom - 3, W, 3);
+    ctx.globalAlpha = .16; ctx.fillStyle = '#a8d4ee'; ctx.fillRect(0, wallBottom, W, 10); ctx.globalAlpha = 1;
+    // сосульки разной длины
+    for (let x = 1; x < W; x += 4) {
+      const L = 2 + Math.floor(rnd() * 9);
+      ctx.fillStyle = '#cfe8f8'; ctx.fillRect(x, wallBottom, 1, L);
+      if (L > 6) { ctx.fillStyle = '#8fbfe0'; ctx.fillRect(x, wallBottom + L - 2, 1, 2); }
+    }
 
-    // чардрева-силуэты, в них и живёт темнота
-    for (let i = 0; i < 12; i++) {
+    // сосны средним планом — заполняют разрыв под Стеной
+    for (let i = 0; i < 16; i++) {
+      const x = Math.floor(rnd() * (W + 14)) - 7;
+      drawSpr(ctx, SPR.fir, x, wallBottom + 4 + Math.floor(rnd() * 14),
+        { '#': '#0a1420', 'h': '#081019' }, 2);
+    }
+
+    // чардрева: голые стволы с изломанными ветвями, в них живёт темнота
+    for (let i = 0; i < 10; i++) {
       const x = Math.floor(rnd() * (W + 16)) - 8;
-      const th = 26 + Math.floor(rnd() * 20);
-      const ty = Math.round(h * .52) - th + Math.floor(rnd() * 12);
-      ctx.fillStyle = '#070d16';
+      const th = 30 + Math.floor(rnd() * 22);
+      const ty = Math.round(h * .54) - th + Math.floor(rnd() * 10);
+      ctx.fillStyle = '#060c14';
       ctx.fillRect(x, ty, 3, th);
-      ctx.fillRect(x - 5, ty + 4, 13, 3);
-      ctx.fillRect(x - 3, ty - 2, 9, 4);
+      for (let k = 0; k < 3; k++) {
+        const by = ty + 4 + k * 8, dir = k % 2 ? 1 : -1;
+        for (let s = 1; s <= 7; s++) ctx.fillRect(x + 1 + dir * s, by - Math.round(s * .8), 2, 2);
+      }
+      ctx.fillRect(x - 2, ty - 3, 7, 4);
     }
 
     // снег
@@ -1330,17 +1346,28 @@ SCENES.westeros = {
       ctx.fillStyle = r2() > .5 ? '#93a5b9' : '#6c7d90';
       ctx.fillRect(x, y, 3, 2);
     }
-    // передний план: сугроб
-    ctx.fillStyle = '#e6eff8';
-    for (let x = 0; x < W; x++) {
-      const y = h - 10 - Math.round(n(x * .04 + 9, 5, 3) * 9);
-      ctx.fillRect(x, y, 1, h - y);
+    // наносы: каждый со своей тенью, чтобы снег не был плитой
+    const drifts = [
+      { y: A.y + 26, amp: 5, top: '#eef5fc', body: '#c2d3e5' },
+      { y: A.y + 48, amp: 7, top: '#e4eef8', body: '#adc0d6' },
+      { y: h - 12,   amp: 9, top: '#f2f8fd', body: '#9db2ca' }
+    ];
+    for (const D of drifts) {
+      for (let x = 0; x < W; x++) {
+        const top = Math.round(D.y - n(x * .035 + D.amp, 5, 3) * D.amp * 2);
+        ctx.fillStyle = D.top;  ctx.fillRect(x, top, 1, 2);
+        ctx.fillStyle = D.body; ctx.fillRect(x, top + 2, 1, h - top);
+      }
     }
-    ctx.fillStyle = '#c3d2e2';
-    for (let x = 0; x < W; x++) {
-      const y = h - 10 - Math.round(n(x * .04 + 9, 5, 3) * 9);
-      ctx.fillRect(x, y + 2, 1, 1);
-    }
+    // позёмка
+    ctx.fillStyle = 'rgba(140,168,196,.45)';
+    for (let y = A.y + 30; y < h; y += 6)
+      for (let x = (y * 5) % 17; x < W; x += 13 + (y % 3) * 4) ctx.fillRect(x, y, 5 + (y % 4), 1);
+    // занесённое бревно
+    ctx.fillStyle = '#2e3846'; ctx.fillRect(8, A.y + 40, 34, 5);
+    ctx.fillStyle = '#3d4a5c'; ctx.fillRect(8, A.y + 40, 34, 1);
+    ctx.fillStyle = '#e4eef8'; ctx.fillRect(8, A.y + 43, 34, 3);
+
     fadeEdges(ctx, h, 16, 10, '#04070d');
   },
   anim(ctx, h, t, st) {
@@ -1515,27 +1542,33 @@ SCENES.lorien = {
     for (const tr of trunks) {
       const base = P.y - 6 + Math.floor(tr.s * 10);
       const light = mix('#25364a', '#8fa6bd', .25 + tr.s * .5);
+      const bend = y => Math.round(Math.sin(y * .018 + tr.s * 6) * 2.5 + Math.sin(y * .006) * 2);
       for (let y = 0; y < base; y++) {
         const q = y / base;
-        const w = Math.max(2, Math.round(tr.w * (.55 + q * .75)));
-        ctx.fillStyle = light; ctx.fillRect(tr.x, y, w, 1);
-        ctx.fillStyle = 'rgba(226,238,252,.22)'; ctx.fillRect(tr.x, y, 1, 1);
-        ctx.fillStyle = 'rgba(4,8,15,.5)'; ctx.fillRect(tr.x + w - 1, y, 1, 1);
+        const w = Math.max(2, Math.round(tr.w * (.5 + q * .8)));
+        const x = tr.x + bend(y);
+        ctx.fillStyle = light; ctx.fillRect(x, y, w, 1);
+        ctx.fillStyle = 'rgba(226,238,252,.22)'; ctx.fillRect(x, y, 1, 1);
+        ctx.fillStyle = 'rgba(4,8,15,.5)'; ctx.fillRect(x + w - 1, y, 1, 1);
       }
-      // ветви уходят вверх и в сторону
-      ctx.fillStyle = light;
+      // ветви: выгибаются вверх и утончаются к концу
       for (let k = 0; k < 3; k++) {
-        const by = Math.round(base * (.14 + k * .17));
+        const by = Math.round(base * (.12 + k * .16));
         const dir = k % 2 ? 1 : -1;
-        for (let s = 1; s <= 13; s++) {
-          const bx = dir > 0 ? tr.x + tr.w + s : tr.x - s;
-          ctx.fillRect(bx, by - Math.round(s * .55), 2, 2);
+        const len = 10 + Math.floor(tr.s * 8);
+        for (let s = 1; s <= len; s++) {
+          const q = s / len;
+          const bx = tr.x + bend(by) + (dir > 0 ? tr.w + s : -s);
+          const byy = by - Math.round(s * .35 + s * s * .035);
+          ctx.fillStyle = mix(light, '#0b1420', q * .45);
+          ctx.fillRect(bx, byy, q > .6 ? 1 : 2, q > .6 ? 1 : 2);
         }
       }
-      // корни
-      ctx.fillStyle = mix(light, '#0a121d', .4);
-      for (let k = -2; k <= 2; k++)
-        ctx.fillRect(tr.x + k * 3, base + Math.abs(k), Math.max(2, tr.w - Math.abs(k)), 3);
+      // корни, расходящиеся по земле
+      const bx0 = tr.x + bend(base);
+      ctx.fillStyle = mix(light, '#0a121d', .45);
+      for (let k = -3; k <= 3; k++)
+        ctx.fillRect(bx0 + k * 3, base + Math.abs(k), Math.max(2, tr.w - Math.abs(k)), 3);
     }
     // полог листвы
     ctx.fillStyle = '#0b1420';
@@ -1565,10 +1598,16 @@ SCENES.lorien = {
       ctx.fillStyle = mix('#16293c', '#0a1522', (y + 14) / 28);
       ctx.fillRect(P.x - w, P.y + y, w * 2, 1);
     }
-    ctx.fillStyle = 'rgba(200,222,245,.10)';                 // блик на воде
-    for (let y = -10; y <= 8; y += 4) {
-      const w = Math.round(Math.sqrt(Math.max(0, 1 - (y / 14) ** 2)) * 34);
-      ctx.fillRect(P.x - w + 4, P.y + y, w, 1);
+    // рябь на воде: короткие штрихи, а не сплошные линии
+    const wr = mulberry32(515);
+    for (let y = -12; y <= 12; y += 2) {
+      const w = Math.round(Math.sqrt(Math.max(0, 1 - (y / 14) ** 2)) * 40);
+      let x = P.x - w + Math.floor(wr() * 6);
+      while (x < P.x + w) {
+        ctx.fillStyle = 'rgba(190,216,242,' + (.05 + wr() * .09).toFixed(2) + ')';
+        ctx.fillRect(x, P.y + y, 2 + Math.floor(wr() * 5), 1);
+        x += 4 + Math.floor(wr() * 9);
+      }
     }
     // камни по краю
     ctx.fillStyle = '#22364a';
