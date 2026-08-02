@@ -61,8 +61,8 @@ html, body {
   left: 50%; top: 50%;
   transform: translate(-50%, -50%) scale(1.14);
   z-index: 8;
-  width: min(34ch, calc(100vw - 40px));
-  padding: 22px 24px;
+  width: min(37ch, calc(100vw - 32px));
+  padding: 22px 22px;
   background: rgba(6, 10, 17, .93);
   border: 1px solid #6d5327;
   box-shadow: 0 0 0 1px rgba(224,169,74,.13), 0 18px 60px rgba(0,0,0,.7);
@@ -88,15 +88,57 @@ html, body {
   letter-spacing: .09em;
   color: #9a8a63;
 }
-.seal .got {
-  display: block;
-  margin-top: 18px;
-  font-family: var(--sans);
-  font-size: 11px;
-  letter-spacing: .16em;
-  text-transform: uppercase;
-  color: #e0a94a;
+/* Находка: то, что уносишь из мира */
+.loot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #2a3446;
+  text-align: left;
 }
+.loot canvas {
+  flex: none;
+  width: 40px; height: 40px;
+  padding: 3px;
+  border: 1px solid #6d5327;
+  background: rgba(224, 169, 74, .07);
+  image-rendering: pixelated;
+}
+.loot-text { display: grid; gap: 3px; min-width: 0; }
+.loot-tag {
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #7d8496;
+}
+.loot-name { font-size: 17px; line-height: 1.25; color: #e0a94a; }
+.loot-note { font-size: 13px; line-height: 1.35; color: #9a8a63; }
+
+/* Подсказка над инвентарём */
+.tip {
+  position: fixed;
+  left: 50%; bottom: calc(88px + env(safe-area-inset-bottom));
+  transform: translate(-50%, 6px);
+  z-index: 11;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 9px 14px;
+  background: rgba(6, 10, 17, .95);
+  border: 1px solid #3a4658;
+  display: grid;
+  gap: 2px;
+  text-align: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease, visibility .18s;
+}
+.tip.on { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.tip-name { font-size: 14px; color: #e0a94a; }
+.tip-note { font-family: var(--sans); font-size: 11px; color: #8c8674; }
 
 /* ── Сумка: семь гнёзд ─────────────────────────────────── */
 .bag {
@@ -110,15 +152,17 @@ html, body {
   pointer-events: none;
 }
 .slot {
-  width: 26px; height: 26px;
-  padding: 1px;
+  width: 30px; height: 30px;
+  padding: 2px;
   border: 1px solid #232d3b;
   background: rgba(8, 13, 21, .55);
-  image-rendering: pixelated;
-  opacity: .55;
-  transition: opacity .5s ease, box-shadow .5s ease, border-color .5s ease;
+  opacity: .5;
+  cursor: default;
+  transition: opacity .5s ease, box-shadow .5s ease, border-color .5s ease, transform .15s ease;
 }
-.slot.full { opacity: 1; }
+.slot canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+.slot.full { opacity: 1; pointer-events: auto; cursor: pointer; }
+.slot.full:hover, .slot.full:focus-visible { transform: translateY(-3px); }
 
 /* ── Подсказка «дальше» ────────────────────────────────── */
 .hint {
@@ -205,7 +249,19 @@ html, body {
   <div class="seal" id="seal" role="status">
     <q id="sealText"></q>
     <span class="src" id="sealSrc"></span>
-    <span class="got" id="sealGot"></span>
+    <div class="loot">
+      <canvas id="lootIcon" width="11" height="11" aria-hidden="true"></canvas>
+      <div class="loot-text">
+        <span class="loot-tag" id="lootTag"></span>
+        <span class="loot-name" id="lootName"></span>
+        <span class="loot-note" id="lootNote"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tip" id="tip" role="status">
+    <span class="tip-name" id="tipName"></span>
+    <span class="tip-note" id="tipNote"></span>
   </div>
 
   <div class="titles" id="finaleStack">
@@ -230,7 +286,7 @@ const TEXT = {
   next: 'Проведи вверх',
   soundOn: 'Звук',
   soundOff: 'Тихо',
-  taken: 'Огонь взят',
+  taken: 'В сумке',
   finaleTitle: 'МАЯК НАДЕЖДЫ',
   finaleWish: 'С днём рождения, мама'
 };
@@ -243,7 +299,8 @@ const STATIONS = [
     quote: 'Рукописи не горят.',
     src: 'Воланд, «Мастер и Маргарита»',
     fire: '#ffb648',
-    icon: 'scroll', item: 'Рукопись, которая не горит'
+    icon: 'scroll', world: 'Мастер и Маргарита',
+    item: 'Несгоревшая рукопись', note: 'Страницы, которых не берёт огонь'
   },
   {
     id: 'niichavo', scene: 'niichavo', act: 'choice',
@@ -252,11 +309,15 @@ const STATIONS = [
     quote: 'Понедельник начинается в субботу.',
     src: 'Аркадий и Борис Стругацкие',
     fire: '#7fd88a',
-    icon: 'vial', item: 'Живая вода',
+    icon: 'vial', world: 'НИИЧАВО',
+    item: 'Живая вода', note: 'Со стеллажа, где всё немного волшебное',
     options: [
-      { label: 'живая вода', fire: '#7fd88a', icon: 'vial', item: 'Склянка с живой водой' },
-      { label: 'неразменный пятак', fire: '#d8b95e', icon: 'coin', item: 'Неразменный пятак' },
-      { label: 'перо феникса', fire: '#3fc9a0', icon: 'feather', item: 'Перо феникса' }
+      { label: 'живая вода', fire: '#7fd88a', icon: 'vial',
+        item: 'Склянка с живой водой', note: 'Срок годности на этикетке не указан' },
+      { label: 'неразменный пятак', fire: '#d8b95e', icon: 'coin',
+        item: 'Неразменный пятак', note: 'Сколько ни трать, а он снова в кармане' },
+      { label: 'перо феникса', fire: '#3fc9a0', icon: 'feather',
+        item: 'Перо феникса', note: 'Своего хозяина оно уже пережило' }
     ]
   },
   {
@@ -267,7 +328,8 @@ const STATIONS = [
     quote: 'Химия — это наука о превращениях.',
     src: 'Уолтер Уайт, «Во все тяжкие»',
     fire: '#4fd6e8',
-    icon: 'shard', item: 'Голубой кристалл'
+    icon: 'shard', world: 'Во все тяжкие',
+    item: 'Голубой кристалл', note: 'Чистота, о которой лучше не спрашивать'
   },
   {
     id: 'arrakis', scene: 'arrakis', act: 'pull',
@@ -276,7 +338,8 @@ const STATIONS = [
     quote: 'Я не должен бояться. Страх — убийца разума.',
     src: '«Дюна»',
     fire: '#7d6bd8',
-    icon: 'spice', item: 'Щепоть пряности'
+    icon: 'spice', world: 'Дюна',
+    item: 'Щепоть пряности', note: 'Её собирают там, где ходят черви'
   },
   {
     id: 'westeros', scene: 'westeros', act: 'draw',
@@ -285,7 +348,8 @@ const STATIONS = [
     quote: 'Ночь темна и полна ужасов — но огонь сжигает их дотла.',
     src: 'Мелисандра, «Игра престолов»',
     fire: '#e8452c',
-    icon: 'torch', item: "Факел Р'глора"
+    icon: 'torch', world: 'Игра престолов',
+    item: "Факел Р'глора", note: 'Огонь, перед которым отступает ночь'
   },
   {
     id: 'camp', scene: 'camp', act: 'fan',
@@ -294,7 +358,8 @@ const STATIONS = [
     quote: 'Мы выживем, только если будем держаться вместе, а не порознь.',
     src: 'Рик Граймс, «Ходячие мертвецы»',
     fire: '#c96a2e',
-    icon: 'tin', item: 'Жестянка с угольком'
+    icon: 'tin', world: 'Ходячие мертвецы',
+    item: 'Жестянка с угольком', note: 'Его донесли люди, безо всякого волшебства'
   },
   {
     id: 'lorien', scene: 'lorien', act: 'still',
@@ -303,7 +368,8 @@ const STATIONS = [
     quote: 'Да будет он тебе светом в тёмных местах, когда все прочие огни погаснут.',
     src: 'Галадриэль, «Властелин колец»',
     fire: '#dfe9f5',
-    icon: 'phial', item: 'Фиал Галадриэли'
+    icon: 'phial', world: 'Властелин колец',
+    item: 'Фиал Галадриэли', note: 'Свет звезды, запертый в стекле'
   }
 ];
 
@@ -549,9 +615,9 @@ function renderLabel(canvas, s, scale, col, tr) {
 /* ── Предметы, которые уносишь из каждого мира ───────────────── */
 const ICONS = {
   scroll: { art: [
-    '...........', '.#########.', '.#ppppppp#.', '.#p-----p#.', '.#p-----p#.',
-    '.#p-----p#.', '.#p-----p#.', '.#ppppppp#.', '.#########.', '...rrrrr...', '...........'],
-    map: { '#': '#8d7f60', 'p': '#efe6cc', '-': '#a89a78', 'r': '#a33a2a' } },
+    '...........', '.rr#####rr.', '.rrppppprr.', '.rrp---prr.', '.rrppppprr.',
+    '.rrp---prr.', '.rrppppprr.', '.rrp---prr.', '.rr#####rr.', '...........', '...........'],
+    map: { '#': '#c9bf9e', 'p': '#efe6cc', '-': '#a89a78', 'r': '#8d7f60' } },
   vial: { art: [
     '....###....', '....#g#....', '...#####...', '...#ggg#...', '..#ggggg#..',
     '..#ggggg#..', '..#ggggg#..', '..#ggggg#..', '..#######..', '...........', '...........'],
@@ -2688,7 +2754,13 @@ function complete() {
   setTimeout(() => {
     document.getElementById('sealText').textContent = s.quote;
     document.getElementById('sealSrc').textContent = s.src;
-    document.getElementById('sealGot').textContent = it.item;
+    document.getElementById('lootTag').textContent = TEXT.taken;
+    document.getElementById('lootName').textContent = it.item;
+    document.getElementById('lootNote').textContent = it.note;
+    const lc = document.getElementById('lootIcon').getContext('2d');
+    lc.imageSmoothingEnabled = false;
+    lc.clearRect(0, 0, 11, 11);
+    drawIcon(lc, it.icon, 0, 0, 1);
     sealEl.classList.add('on');
     sealUp = true;
   }, 760);
@@ -2969,24 +3041,56 @@ setInterval(() => {
 function buildBag() {
   bagEl.innerHTML = '';
   for (let i = 0; i < STATIONS.length; i++) {
-    const c = document.createElement('canvas');
-    c.className = 'slot';
-    c.width = 11; c.height = 11;
-    bagEl.appendChild(c);
+    const b = document.createElement('button');
+    b.className = 'slot';
+    b.type = 'button';
+    b.tabIndex = -1;
+    b.appendChild(Object.assign(document.createElement('canvas'), { width: 11, height: 11 }));
+    b.addEventListener('pointerenter', () => showTip(i));
+    b.addEventListener('pointerleave', hideTip);
+    b.addEventListener('focus', () => showTip(i));
+    b.addEventListener('blur', hideTip);
+    b.addEventListener('click', e => { e.stopPropagation(); showTip(i, true); });
+    bagEl.appendChild(b);
   }
 }
 /** Кладёт предмет в ячейку: миниатюра плюс свечение его цветом. */
 function fillSlot(i, icon, col) {
-  const c = bagEl.children[i];
-  if (!c) return;
-  const cc = c.getContext('2d');
+  const b = bagEl.children[i];
+  if (!b) return;
+  const cc = b.firstChild.getContext('2d');
   cc.imageSmoothingEnabled = false;
   cc.clearRect(0, 0, 11, 11);
   drawIcon(cc, icon, 0, 0, 1);
-  c.classList.add('full');
-  c.style.boxShadow = '0 0 9px 1px ' + col + '66';
-  c.style.borderColor = col + '99';
+  b.classList.add('full');
+  b.tabIndex = 0;
+  b.style.boxShadow = '0 0 9px 1px ' + col + '66';
+  b.style.borderColor = col + '99';
+  const it = itemOf(STATIONS[i]);
+  b.setAttribute('aria-label', it.item + '. ' + it.note);
 }
+function clearSlot(i) {
+  const b = bagEl.children[i];
+  if (!b) return;
+  b.classList.remove('full');
+  b.tabIndex = -1;
+  b.style.boxShadow = 'none';
+  b.firstChild.getContext('2d').clearRect(0, 0, 11, 11);
+}
+
+/* ── Подсказка: что это за предмет ───────────────────────────── */
+const tipEl = document.getElementById('tip');
+function showTip(i, sticky) {
+  const b = bagEl.children[i];
+  if (!b || !b.classList.contains('full')) return;
+  const s = STATIONS[i], it = itemOf(s);
+  document.getElementById('tipName').textContent = it.item;
+  document.getElementById('tipNote').textContent = it.note + ' · ' + s.world;
+  tipEl.classList.add('on');
+  clearTimeout(showTip._t);
+  if (sticky) showTip._t = setTimeout(hideTip, 3200);
+}
+function hideTip() { tipEl.classList.remove('on'); }
 function itemOf(s) {
   const d = st[s.id];
   return (s.options && d.pick != null) ? s.options[d.pick] : s;
@@ -3110,9 +3214,7 @@ function startFinale() {
       const r = cell.getBoundingClientRect();
       sx = (r.left + r.width / 2 - cr.left) / scale;
       sy = (r.top + r.height / 2 - cr.top) / scale;
-      cell.classList.remove('full');
-      cell.style.boxShadow = 'none';
-      cell.getContext('2d').clearRect(0, 0, 11, 11);
+      clearSlot(i);
     }
     SND.whoosh(true);
     FX.fly(sx, sy, so.x, so.y, fin.colors[i], fin.icons[i], () => {
