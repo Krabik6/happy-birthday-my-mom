@@ -69,6 +69,7 @@ html, body {
   text-align: center;
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;              /* карточка не должна съедать касания */
   transition: opacity .4s ease, transform .4s cubic-bezier(.2,.9,.3,1), visibility .4s;
 }
 .seal.on { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
@@ -2185,7 +2186,8 @@ const FRAMES = [{ id: 'prologue' }]
 
 let scale = 3, AH = 240;
 let idx = 0, phase = 'play', cut = 0, cutting = false, dragging = false;
-let idle = 0, demoOn = false, lastT = performance.now() / 1000;
+let idle = 0, demoOn = false, sealUp = false, wheelAcc = 0, advanceLock = 0;
+let lastT = performance.now() / 1000;
 const st = {};
 STATIONS.forEach(s => st[s.id] = {});
 const pro = { beat: 0, t0: 0 };
@@ -2315,7 +2317,9 @@ function frame(now) {
 /* ── Смена кадра ─────────────────────────────────────────────── */
 function goNext() {
   if (cutting || idx + 1 >= FRAMES.length) return;
+  if (performance.now() < advanceLock) return;      // не проскочить цитату случайным касанием
   cutting = true;
+  sealUp = false; sealEl.classList.remove('on');
   hideHint();
   SND.clack();
   const from = cut, t0 = performance.now();
@@ -2341,7 +2345,8 @@ function snapBack() {
 
 function enterFrame() {
   const f = FRAMES[idx];
-  idle = 0; demoOn = false;
+  idle = 0; demoOn = false; sealUp = false; wheelAcc = 0; advanceLock = 0;
+  sealEl.classList.remove('on');
   if (f.id === 'prologue') { pro.beat = 0; pro.t0 = performance.now() / 1000; phase = 'play'; showLine(TEXT.prologue[0]); showHint(TEXT.tapOn); SND.ambient(AMB.prologue); return; }
   if (f.id === 'finale') { phase = 'done'; hideLine(); hideHint(); startFinale(); return; }
   const s = f.station;
@@ -2368,6 +2373,7 @@ function complete() {
   state.fire = fire;
   phase = 'sealed';
   demoOn = false;
+  advanceLock = performance.now() + 1100;
 
   const A = actionPoint(s, AH);
   FX.burst(A.x, A.y, [fire, '#ffffff', mix(fire, '#ffffff', .5)], 42, { speed: 58, g: 26, life: 1.1 });
@@ -2396,8 +2402,17 @@ function complete() {
     document.getElementById('sealSrc').textContent = s.src;
     document.getElementById('sealGot').textContent = TEXT.taken;
     sealEl.classList.add('on');
+    sealUp = true;
   }, 760);
-  setTimeout(() => { sealEl.classList.remove('on'); showHint(TEXT.next); }, 4600);
+  setTimeout(dropSeal, 4600);
+}
+/** Первое касание убирает цитату, следующее — перематывает кадр. */
+function dropSeal() {
+  if (!sealUp) return false;
+  sealUp = false;
+  sealEl.classList.remove('on');
+  showHint(TEXT.next);
+  return true;
 }
 
 function actionPoint(s, h) {
@@ -2473,8 +2488,8 @@ stage.addEventListener('pointermove', e => {
   ptr.x = p.x; ptr.y = p.y;
 
   if (dragging) {
-    cut = clamp((ptr.y0 - p.y) / (AH * .40), 0, 1);
-    if (cut > .04) { hideLine(); hideHint(); }     // на склейке экран чист
+    cut = clamp((ptr.y0 - p.y) / (AH * .30), 0, 1);
+    if (cut > .04) { hideLine(); hideHint(); dropSeal(); }   // на склейке экран чист
     return;
   }
   const f = FRAMES[idx];
@@ -2514,7 +2529,10 @@ function endPtr() {
   const f = FRAMES[idx];
   if (dragging) {
     dragging = false;
-    if (cut > .28) goNext(); else snapBack();
+    const tap = ptr && ptr.moved < 14 && cut < .05;
+    if (cut > .26) goNext();
+    else if (tap) { if (!dropSeal()) goNext(); }      // короткое касание тоже листает
+    else snapBack();
     ptr = null; return;
   }
   if (f.id === 'prologue' && ptr && ptr.moved < 12) advancePrologue();
@@ -2526,6 +2544,31 @@ function endPtr() {
 }
 stage.addEventListener('pointerup', endPtr);
 stage.addEventListener('pointercancel', endPtr);
+
+/** Листать можно и колесом — на ноутбуке это первое, что пробуют. */
+addEventListener('wheel', e => {
+  SND.boot(); SND.resume();
+  idle = 0;
+  if (FRAMES[idx].id === 'prologue' && phase === 'play') {
+    wheelAcc += e.deltaY;
+    if (wheelAcc > 60) { wheelAcc = 0; advancePrologue(); }
+    return;
+  }
+  if (phase !== 'sealed' || cutting) return;
+  wheelAcc += e.deltaY;
+  if (wheelAcc > 60) { wheelAcc = 0; if (!dropSeal()) goNext(); }
+  if (wheelAcc < -200) wheelAcc = 0;
+}, { passive: true });
+
+/** И с клавиатуры — пробел, ввод, стрелки. */
+addEventListener('keydown', e => {
+  if (!['Space', 'Enter', 'ArrowDown', 'ArrowRight', 'PageDown'].includes(e.code)) return;
+  e.preventDefault();
+  SND.boot(); SND.resume();
+  idle = 0;
+  if (FRAMES[idx].id === 'prologue' && phase === 'play') return advancePrologue();
+  if (phase === 'sealed' && !cutting) { if (!dropSeal()) goNext(); }
+});
 
 function advancePrologue() {
   if (pro.beat < 2) {
