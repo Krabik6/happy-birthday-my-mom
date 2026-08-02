@@ -10,6 +10,7 @@
   --sans:  ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
 }
 * , *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #04070d; }
 
 .app {
   margin: 0;
@@ -685,8 +686,22 @@ SCENES.road = {
     for (let y = 0; y < h; y += 3)
       for (let x = (y * 5) % 13; x < W; x += 11 + (y % 3) * 3)
         if (n(x * .1, y * .1, 2) > .45) ctx.fillRect(x, y, 3, 1);
+    // редкие звёзды, отражённые в воде
+    scatter(ctx, '#1b2c42', 22, 0, 0, W, h, 61);
   },
-  anim() {}
+  anim(ctx, h, t, s) {
+    if (!s || !s.fire) return;
+    // впереди уже брезжит свет следующего мира
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 46; i++) {
+      ctx.globalAlpha = .020 * (1 - i / 46);
+      ctx.fillStyle = s.fire;
+      ctx.fillRect(0, h - 1 - i, W, 1);
+    }
+    ctx.restore();
+    glow(ctx, 60, h + 8, 34 + Math.abs(Math.sin(t * .9)) * 4, s.fire, .32);
+  }
 };
 
 /* ── 1. МОСКВА · бальный зал ──────────────────────────────────── */
@@ -867,6 +882,14 @@ SCENES.niichavo = {
     for (let x = -10; x < W + 14; x += 15) ctx.fillRect(x + 7, floorY, 1, h - floorY);
     ctx.fillStyle = 'rgba(255,220,160,.05)';
     for (let y = floorY; y < h; y += 6) ctx.fillRect(0, y, W, 1);
+    // половик и стопка бумаг на полу
+    const rugY = floorY + Math.round((h - floorY) * .34);
+    ctx.fillStyle = '#5a3a3a'; ctx.fillRect(22, rugY, 76, 18);
+    ctx.fillStyle = '#6e4646'; ctx.fillRect(22, rugY, 76, 2); ctx.fillRect(22, rugY + 16, 76, 2);
+    ctx.fillStyle = '#7c5252';
+    for (let x = 26; x < 96; x += 8) ctx.fillRect(x, rugY + 6, 4, 6);
+    ctx.fillStyle = '#cfc7ad'; ctx.fillRect(102, rugY + 8, 12, 7);
+    ctx.fillStyle = '#b8b096'; ctx.fillRect(102, rugY + 8, 12, 1);
 
     // потолочная лампа на шнуре
     ctx.fillStyle = '#2b3a2e'; ctx.fillRect(59, 0, 2, 9);
@@ -904,8 +927,28 @@ SCENES.niichavo = {
       ctx.fillRect(bx, 16 + 3 * 26 + 18 - hh, w, hh);
       bx += w + 1;
     }
+    // доска с мелом на пустой стене
+    const bY = 16 + 4 * 26 + 6;
+    ctx.fillStyle = '#4a3520'; ctx.fillRect(30, bY, 84, 30);
+    ctx.fillStyle = '#1c2a22'; ctx.fillRect(32, bY + 2, 80, 26);
+    ctx.fillStyle = 'rgba(220,235,225,.55)';
+    const cr = mulberry32(404);
+    for (let i = 0; i < 16; i++) {
+      const x = 36 + Math.floor(cr() * 68), y = bY + 5 + Math.floor(cr() * 19);
+      ctx.fillRect(x, y, 2 + Math.floor(cr() * 7), 1);
+    }
+    ctx.fillRect(38, bY + 6, 1, 8); ctx.fillRect(38, bY + 10, 6, 1);      // формула
+    ctx.fillRect(46, bY + 6, 6, 1); ctx.fillRect(46, bY + 13, 6, 1);
+    ctx.fillStyle = '#5c4429'; ctx.fillRect(30, bY + 30, 84, 3);
+    ctx.fillStyle = '#e8e2d0'; ctx.fillRect(96, bY + 28, 5, 2);           // мелок
+
+    // часы, которые тут ничего не значат
+    ctx.fillStyle = '#5a4126'; ctx.fillRect(12, bY + 2, 14, 14);
+    ctx.fillStyle = '#d8d0b8'; ctx.fillRect(14, bY + 4, 10, 10);
+    ctx.fillStyle = '#3a2916'; ctx.fillRect(18, bY + 6, 1, 4); ctx.fillRect(19, bY + 9, 4, 1);
+
     // кот, который всё видел
-    drawSpr(ctx, SPR.cat, 104, 8, { '#': '#23232a' }, 1);
+    drawSpr(ctx, SPR.cat, 20, this.act(h).y - 6, { '#': '#23232a' }, 1);
 
     // стол
     ctx.fillStyle = '#5a4126'; ctx.fillRect(36, tableY, 82, 5);
@@ -966,6 +1009,22 @@ SCENES.desert = {
     ctx.fillStyle = 'rgba(255,255,255,.32)';
     for (let y = hz - 6; y < hz + 4; y += 2) ctx.fillRect(0, y, W, 1);
 
+    // столб с провисающими проводами — примета этой дороги
+    ctx.fillStyle = '#6b5a44';
+    ctx.fillRect(88, hz - 46, 3, 50);
+    ctx.fillRect(82, hz - 42, 15, 2);
+    ctx.fillStyle = '#4e4133';
+    for (let x = 0; x < 82; x++) {
+      const q = x / 82;
+      ctx.fillRect(x, Math.round(hz - 41 + Math.sin(q * Math.PI) * 7 - q * 3), 1, 1);
+      ctx.fillRect(x, Math.round(hz - 37 + Math.sin(q * Math.PI) * 6 - q * 2), 1, 1);
+    }
+    // две птицы
+    ctx.fillStyle = '#8a7a5a';
+    for (const [bx, by] of [[30, 40], [42, 52]]) {
+      ctx.fillRect(bx, by, 2, 1); ctx.fillRect(bx + 2, by - 1, 2, 1); ctx.fillRect(bx + 4, by, 2, 1);
+    }
+
     // столовые горы вдали
     ctx.fillStyle = '#c9ab84';
     ctx.fillRect(0, hz - 11, 30, 11); ctx.fillRect(5, hz - 15, 18, 4);
@@ -1000,7 +1059,7 @@ SCENES.desert = {
 
     // кусты и камни
     const rnd = mulberry32(19);
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 34; i++) {
       const x = Math.floor(rnd() * W), y = hz + 10 + Math.floor(rnd() * (h - hz - 20));
       if (rnd() > .45) {
         ctx.fillStyle = '#8a7a4a';
@@ -1093,37 +1152,47 @@ SCENES.arrakis = {
     ctx.globalAlpha = .35; disc(ctx, 95, 17, 4, '#b09880'); ctx.globalAlpha = 1;
     disc(ctx, 24, 12, 4, '#cbb9a8');
 
-    // гряды дюн: дальние выцветшие, ближние сочные
-    const layers = [
-      { y: hz + 6,  amp: 4,  lit: '#e8bb84', dark: '#b8875a' },
-      { y: hz + 22, amp: 7,  lit: '#dfa261', dark: '#96613c' },
-      { y: hz + 46, amp: 10, lit: '#cf8c46', dark: '#75452e' },
-      { y: hz + 78, amp: 13, lit: '#b8712f', dark: '#4e2f4a' }
-    ];
+    // подложка до самого низа, иначе между небом и дюнами зияет шов
+    vgrad(ctx, hz - 2, h, '#e8c294', '#7a5240', 4);
+
+    // гряды дюн: у каждой освещённый гребень и уходящий в тень склон
     const n = makeNoise(23);
-    for (const L of layers) {
+    const layers = [
+      { y: hz + 8,  amp: 4,  lit: '#f0c893', dark: '#a87a52', fall: 22 },
+      { y: hz + 26, amp: 7,  lit: '#e6ad6c', dark: '#8d5a3c', fall: 30 },
+      { y: hz + 52, amp: 10, lit: '#d6944c', dark: '#6d4436', fall: 40 },
+      { y: hz + 86, amp: 13, lit: '#c07d33', dark: '#5a3838', fall: 54 }
+    ];
+    const paintLayer = L => {
       for (let x = 0; x < W; x++) {
         const top = Math.round(L.y - n(x * .022, L.amp, 3) * L.amp * 2);
-        ctx.fillStyle = L.lit;  ctx.fillRect(x, top, 1, 3);
-        ctx.fillStyle = L.dark; ctx.fillRect(x, top + 3, 1, h - top);
+        for (let y = top; y < h; y++) {
+          ctx.fillStyle = mix(L.lit, L.dark, clamp((y - top) / L.fall, 0, 1));
+          ctx.fillRect(x, y, 1, 1);
+        }
       }
-    }
-    // рябь по песку
-    ctx.fillStyle = 'rgba(60,32,44,.22)';
-    for (let y = hz + 30; y < h; y += 5)
-      for (let x = (y * 5) % 13; x < W; x += 12) ctx.fillRect(x, y, 6, 1);
+    };
+    paintLayer(layers[0]);
+    // червь идёт по дальнему гребню — виден на светлом песке
+    ctx.globalAlpha = .40;
+    drawSpr(ctx, SPR.worm, 12, hz + 16, { '#': '#6b4632' }, 2);
+    ctx.globalAlpha = 1;
+    layers.slice(1).forEach(paintLayer);
 
-    // червь на дальнем гребне — только силуэт
-    ctx.globalAlpha = .5;
-    drawSpr(ctx, SPR.worm, 20, hz + 10, { '#': '#4a3028' }, 2);
+    // рябь: поперёк склонов, к низу крупнее
+    for (let y = hz + 14; y < h; y += 4) {
+      const d = (y - hz) / (h - hz);
+      ctx.globalAlpha = .10 + d * .14;
+      ctx.fillStyle = '#3a2030';
+      for (let x = (y * 5) % 13; x < W; x += 9 + Math.round(d * 6))
+        ctx.fillRect(x, y, 4 + Math.round(d * 4), 1);
+    }
+    ctx.globalAlpha = 1;
+    // следы на песке к стучалке
+    ctx.globalAlpha = .18; ctx.fillStyle = '#2e1b28';
+    for (let i = 0; i < 8; i++) ctx.fillRect(14 + i * 6, Math.round(h * .70) + (i % 2) * 3, 3, 2);
     ctx.globalAlpha = 1;
 
-    // ближний гребень как рама снизу
-    for (let x = 0; x < W; x++) {
-      const top = Math.round(h - 16 - n(x * .03 + 5, 9, 3) * 10);
-      ctx.fillStyle = '#8f5327'; ctx.fillRect(x, top, 1, 2);
-      ctx.fillStyle = '#3f2740'; ctx.fillRect(x, top + 2, 1, h - top);
-    }
     fadeEdges(ctx, h, 18, 12, '#04070d');
   },
   anim(ctx, h, t, st) {
@@ -1132,9 +1201,14 @@ SCENES.arrakis = {
 
     // стучалка входит в песок
     const sink = Math.round(p * 16);
-    ctx.fillStyle = '#6b5a3e'; ctx.fillRect(tx - 2, ty - 30 + sink, 4, 26);
-    ctx.fillStyle = '#8a7550'; ctx.fillRect(tx - 6, ty - 33 + sink, 13, 4);
-    ctx.fillStyle = '#5a4a30'; ctx.fillRect(tx - 6, ty - 30 + sink, 13, 1);
+    const top = ty - 34 + sink;
+    ctx.fillStyle = '#5c4c33'; ctx.fillRect(tx - 2, top + 6, 5, 28);      // шток
+    ctx.fillStyle = '#7d6a48'; ctx.fillRect(tx - 2, top + 6, 1, 28);
+    ctx.fillStyle = '#8a7550'; ctx.fillRect(tx - 7, top, 15, 7);          // груз
+    ctx.fillStyle = '#a08c64'; ctx.fillRect(tx - 7, top, 15, 2);
+    ctx.fillStyle = '#4a3d28'; ctx.fillRect(tx - 7, top + 6, 15, 1);
+    ctx.fillStyle = '#6b5a3e';                                            // кольца
+    ctx.fillRect(tx - 4, top + 13, 9, 2); ctx.fillRect(tx - 4, top + 21, 9, 2);
 
     if (p > .05) {
       ctx.globalAlpha = .30 * p;
@@ -1352,7 +1426,7 @@ SCENES.camp = {
     for (const [x, y] of [[2, .40], [110, .43], [96, .38]]) {
       drawSpr(ctx, SPR.walker, x, Math.round(h * y), { '#': '#131e27' }, 2);
     }
-    ctx.globalAlpha = .30; band(ctx, Math.round(h * .30), Math.round(h * .26), '#080f16'); ctx.globalAlpha = 1;
+    ctx.globalAlpha = .55; band(ctx, Math.round(h * .28), Math.round(h * .30), '#060b11'); ctx.globalAlpha = 1;
 
     // земля
     vgrad(ctx, groundY - 4, h, '#202a1a', '#0b0f0b', 7);
@@ -1557,66 +1631,168 @@ SCENES.lorien = {
 /* ── ЛЕСТНИЦА МАЯКА ───────────────────────────────────────────── */
 SCENES.stairs = {
   paint(ctx, h) {
-    vgrad(ctx, 0, h, '#0a1018', '#141c26', 5);
-    // изогнутая стена
-    ctx.fillStyle = '#242f3c'; ctx.fillRect(0, 0, 16, h); ctx.fillRect(W - 16, 0, 16, h);
-    ctx.fillStyle = '#1a232e';
-    for (let y = 0; y < h; y += 9) { ctx.fillRect(0, y, 16, 1); ctx.fillRect(W - 16, y, 16, 1); }
-    // ступени
-    for (let y = h - 8, i = 0; y > -10; y -= 11, i++) {
-      const dir = i % 2 ? 1 : -1;
-      const x = 60 + dir * 12 - 22;
-      ctx.fillStyle = '#38465a'; ctx.fillRect(x, y, 44, 4);
-      ctx.fillStyle = '#232e3d'; ctx.fillRect(x, y + 4, 44, 3);
+    vgrad(ctx, 0, h, '#080e16', '#111925', 5);
+
+    // каменная кладка стен
+    const rnd = mulberry32(133);
+    for (const [x0, wd] of [[0, 18], [W - 18, 18]]) {
+      ctx.fillStyle = '#212c39'; ctx.fillRect(x0, 0, wd, h);
+      for (let y = 0; y < h; y += 8) {
+        const off = ((y / 8) | 0) % 2 ? 6 : 0;
+        for (let x = x0 - 6 + off; x < x0 + wd; x += 12) {
+          ctx.fillStyle = 'rgba(150,180,210,' + (.03 + rnd() * .05).toFixed(2) + ')';
+          ctx.fillRect(x + 1, y + 1, 10, 6);
+          ctx.fillStyle = 'rgba(6,10,16,.5)';
+          ctx.fillRect(x, y, 12, 1); ctx.fillRect(x, y, 1, 8);
+        }
+      }
     }
-    // окна с морем
-    for (let y = 30; y < h - 20; y += 90) {
-      ctx.fillStyle = '#0e1620'; ctx.fillRect(W - 15, y, 13, 22);
-      vgradIn(ctx, W - 14, y + 1, 11, 20, '#1b3350', '#0d1a2a');
+
+    // центральный столб, вокруг которого вьётся лестница
+    ctx.fillStyle = '#1b2530'; ctx.fillRect(54, 0, 13, h);
+    ctx.fillStyle = '#2a3745'; ctx.fillRect(54, 0, 3, h);
+    ctx.fillStyle = '#141c25'; ctx.fillRect(65, 0, 2, h);
+
+    // ступени идут по спирали: ближние широкие и светлые, дальние тонут
+    const phase = y => y * .050;
+    for (let y = h - 6; y > -14; y -= 9) {
+      const ph = phase(y), s = Math.sin(ph), c = Math.cos(ph);
+      const outer = Math.round(60 + s * 40);
+      const x0 = Math.min(60, outer), x1 = Math.max(60, outer);
+      if (x1 - x0 < 3) continue;
+      const front = c > 0;
+      ctx.fillStyle = front ? '#465872' : '#2b3a4e'; ctx.fillRect(x0, y, x1 - x0, 3);
+      ctx.fillStyle = front ? '#5f7499' : '#374862'; ctx.fillRect(x0, y, x1 - x0, 1);
+      ctx.fillStyle = front ? '#1c2531' : '#151d27'; ctx.fillRect(x0, y + 3, x1 - x0, 3);
+      // столбик перил на внешнем крае
+      ctx.fillStyle = front ? '#42536d' : '#28344a';
+      ctx.fillRect(outer - (s > 0 ? 2 : 0), y - 13, 2, 14);
+    }
+    // сами перила — непрерывная винтовая линия
+    for (let y = 0; y < h; y++) {
+      const ph = phase(y), s = Math.sin(ph), c = Math.cos(ph);
+      const x = Math.round(60 + s * 41);
+      ctx.fillStyle = c > 0 ? '#7189b0' : '#33415a';
+      ctx.fillRect(x - 1, y - 14, 3, 2);
+    }
+
+    // окна на море и настенные лампы
+    for (let y = 24; y < h - 20; y += 78) {
+      ctx.fillStyle = '#0c141d'; ctx.fillRect(W - 17, y, 15, 26);
+      vgradIn(ctx, W - 16, y + 1, 13, 24, '#1b3350', '#0b1622');
       ctx.fillStyle = '#2d5478';
-      for (let k = 10; k < 20; k += 3) ctx.fillRect(W - 14, y + k, 11, 1);
+      for (let k = 12; k < 24; k += 3) ctx.fillRect(W - 16, y + k, 13, 1);
+      ctx.fillStyle = '#0c141d'; ctx.fillRect(W - 11, y, 2, 26);
     }
-    fadeEdges(ctx, h, 26, 20, '#04070d');
+    for (let y = 60; y < h - 20; y += 78) {
+      ctx.fillStyle = '#3a2c18'; ctx.fillRect(15, y, 4, 3);
+      ctx.fillStyle = '#e0d6bc'; ctx.fillRect(16, y - 4, 2, 4);
+    }
+    fadeEdges(ctx, h, 24, 18, '#04070d');
   },
-  anim() {}
+  anim(ctx, h, t) {
+    for (let y = 60; y < h - 20; y += 78) {
+      flame(ctx, 17, y - 4, 4, t, '#fff0c4', '#ff9a2e', y);
+      glow(ctx, 17, y - 6, 20, '#ffb648', .5);
+    }
+  }
 };
 
 /* ── ЛАМПОВАЯ ─────────────────────────────────────────────────── */
 SCENES.lamp = {
   paint(ctx, h) {
-    vgrad(ctx, 0, h, '#080d14', '#0d141d', 5);
-    const cy = Math.round(h * .48);
-    // гранёная лампа
-    ctx.fillStyle = '#1d2836';
-    for (let y = -26; y <= 26; y++) {
-      const w = Math.round(Math.sqrt(Math.max(0, 1 - (y / 26) ** 2)) * 26);
+    const cy = Math.round(h * .44);
+    const floorY = Math.round(h * .76);
+
+    // за стеклом — ночь и море
+    vgrad(ctx, 0, floorY, '#050a12', '#0b1a2a', 6);
+    scatter(ctx, '#cfd8e4', 40, 0, 0, W, Math.round(h * .30), 91);
+    drawSea(ctx, Math.round(h * .58), floorY, '#12293f');
+
+    // крыша с рёбрами
+    ctx.fillStyle = '#1a2430'; ctx.fillRect(0, 0, W, 16);
+    ctx.fillStyle = '#26333f'; ctx.fillRect(0, 14, W, 3);
+    for (let x = 6; x < W; x += 14) { ctx.fillStyle = '#222d39'; ctx.fillRect(x, 0, 3, 16); }
+
+    // остекление: вертикальные переплёты
+    ctx.fillStyle = '#1e2a36';
+    for (let x = 4; x < W; x += 19) ctx.fillRect(x, 17, 3, floorY - 17);
+    ctx.fillStyle = '#26333f';
+    ctx.fillRect(0, Math.round(h * .30), W, 2); ctx.fillRect(0, Math.round(h * .58), W, 2);
+
+    // линза Френеля: концентрические призмы
+    ctx.fillStyle = '#22303f';
+    for (let y = -28; y <= 28; y++) {
+      const w = Math.round(Math.sqrt(Math.max(0, 1 - (y / 28) ** 2)) * 28);
       ctx.fillRect(60 - w, cy + y, w * 2, 1);
     }
-    ctx.fillStyle = 'rgba(255,255,255,.05)';
-    for (let x = 36; x < 86; x += 8) ctx.fillRect(x, cy - 26, 1, 52);
-    ctx.fillStyle = '#2b3a4c'; ctx.fillRect(30, cy + 26, 60, 4);
-    ctx.fillStyle = '#26313f'; ctx.fillRect(34, cy + 30, 52, 6);
-    fadeEdges(ctx, h, 26, 26, '#04070d');
+    for (let r = 26; r > 4; r -= 5) {
+      ctx.fillStyle = r % 10 === 6 ? '#2e4054' : '#28374a';
+      for (let y = -r; y <= r; y++) {
+        const w = Math.round(Math.sqrt(Math.max(0, 1 - (y / r) ** 2)) * r);
+        ctx.fillRect(60 - w, cy + y, 2, 1);
+        ctx.fillRect(60 + w - 2, cy + y, 2, 1);
+      }
+    }
+    ctx.fillStyle = 'rgba(190,220,250,.07)';
+    for (let y = -24; y <= 24; y += 4) {
+      const w = Math.round(Math.sqrt(Math.max(0, 1 - (y / 28) ** 2)) * 26);
+      ctx.fillRect(60 - w + 3, cy + y, Math.max(1, w >> 1), 1);
+    }
+    // оправа и постамент
+    ctx.fillStyle = '#33455a'; ctx.fillRect(28, cy + 28, 64, 4);
+    ctx.fillStyle = '#2a3849'; ctx.fillRect(34, cy + 32, 52, 8);
+    ctx.fillStyle = '#1f2b39'; ctx.fillRect(40, cy + 40, 40, floorY - (cy + 40));
+
+    // пол-решётка и поручень
+    ctx.fillStyle = '#1a232e'; ctx.fillRect(0, floorY, W, h - floorY);
+    ctx.fillStyle = '#26313d';
+    for (let x = 0; x < W; x += 7) ctx.fillRect(x, floorY, 2, h - floorY);
+    for (let y = floorY; y < h; y += 7) ctx.fillRect(0, y, W, 1);
+    ctx.fillStyle = '#3a4a5c'; ctx.fillRect(0, floorY - 3, W, 3);
+
+    // гнёзда под огни
+    this.sockets(h).forEach(s => {
+      ctx.fillStyle = '#3a4a5c'; ctx.fillRect(s.x - 4, s.y - 3, 9, 7);
+      ctx.fillStyle = '#131c26'; ctx.fillRect(s.x - 3, s.y - 2, 7, 5);
+      ctx.fillStyle = '#4a5c72'; ctx.fillRect(s.x - 4, s.y + 4, 9, 2);
+    });
+    fadeEdges(ctx, h, 14, 14, '#04070d');
   },
   anim(ctx, h, t, st) {
-    const cy = Math.round(h * .48);
+    const cy = Math.round(h * .44);
     const lit = st.lit || 0;
-    SCENES.lamp.sockets(h).forEach((s, i) => {
-      ctx.fillStyle = '#31404f';
-      ctx.fillRect(s.x - 3, s.y - 3, 6, 6);
-      if (i < lit) {
-        const col = st.colors[i];
-        glow(ctx, s.x, s.y, 8 + Math.abs(Math.sin(t * 2 + i)) * 2, col, 1);
-        gem(ctx, s.x, s.y, 2, col);
-      }
+    this.sockets(h).forEach((s, i) => {
+      if (i >= lit) return;
+      const col = st.colors[i];
+      glow(ctx, s.x, s.y, 9 + Math.abs(Math.sin(t * 2 + i)) * 2, col, 1);
+      gem(ctx, s.x, s.y, 2, col);
+      // отсвет на оправе линзы
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = .16;
+      ctx.fillStyle = col;
+      ctx.fillRect(s.x - 2, cy + 28, 5, 4);
+      ctx.restore();
     });
-    if (lit > 0) glow(ctx, 60, cy, 44, '#ffffff', .10 * lit);
+    if (lit > 0) {
+      glow(ctx, 60, cy, 52, '#ffffff', .13 * lit);
+      // линза начинает светиться изнутри
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = .05 * lit;
+      for (let y = -22; y <= 22; y++) {
+        const w = Math.round(Math.sqrt(Math.max(0, 1 - (y / 22) ** 2)) * 22);
+        ctx.fillStyle = '#cfe4ff'; ctx.fillRect(60 - w, cy + y, w * 2, 1);
+      }
+      ctx.restore();
+    }
   },
   sockets(h) {
-    const cy = Math.round(h * .48), out = [];
+    const cy = Math.round(h * .44), out = [];
     for (let i = 0; i < 7; i++) {
-      const a = -Math.PI / 2 + (i - 3) * .48;
-      out.push({ x: Math.round(60 + Math.cos(a) * 34), y: Math.round(cy + Math.sin(a) * 34) });
+      const a = Math.PI * .18 + (i / 6) * Math.PI * .64;      // дуга под линзой
+      out.push({ x: Math.round(60 - Math.cos(a) * 44), y: Math.round(cy + Math.sin(a) * 40) });
     }
     return out;
   }
@@ -1678,10 +1854,12 @@ function layout() {
   push('world', 'lamp', AH);
   worldH = y;
 
-  for (const b of blocks) {
-    if (b.kind !== 'world') continue;
-    b.focus = b.top + Math.round((b.h - AH) / 2);
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i];
     b.cache = null;
+    if (b.kind === 'world') { b.focus = b.top + Math.round((b.h - AH) / 2); continue; }
+    const nxt = blocks[i + 1];                       // цвет мира, к которому ведёт дорога
+    b.st = nxt && nxt.station ? { fire: nxt.station.fire } : {};
   }
   recomputeGate();
   applyBodyHeight();
@@ -1727,7 +1905,8 @@ function frame(now) {
     sctx.drawImage(blockCache(b), 0, 0);
     const sc = SCENES[b.id];
     if (sc && sc.anim) {
-      const state = b.station ? st[b.station.id] : (b.id === 'lamp' ? lampState : {});
+      const state = b.station ? st[b.station.id]
+        : b.id === 'lamp' ? lampState : (b.st || {});
       sc.anim(sctx, b.h, reduced ? 0 : t, state);
     }
     sctx.restore();
